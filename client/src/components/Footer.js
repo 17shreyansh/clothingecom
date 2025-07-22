@@ -9,20 +9,24 @@ function Footer() {
       <div className="container">
         <div className="footer-content">
           <div className="footer-section">
-            <h3>StyleHub</h3>
+            <h3>Bhuvi Creations</h3>
             <p>Your destination for modern fashion and style. Quality clothing for every occasion.</p>
             <div className="contact-info">
               <div className="contact-item">
                 <FiMail />
-                <span>support@stylehub.com</span>
+                <span>bhuvicreations22@gmail.com</span>
+              </div>
+              <div className="contact-item">
+                <FiMail />
+                <span>info@bhuvicreations.com</span>
               </div>
               <div className="contact-item">
                 <FiPhone />
-                <span>+91 98765 43210</span>
+                <span>+91 9560540494</span>
               </div>
               <div className="contact-item">
                 <FiMapPin />
-                <span>Mumbai, India</span>
+                <span>Lajpat Nagar, Sahibabad, Ghaziabad, UP - 201005</span>
               </div>
             </div>
           </div>
@@ -66,7 +70,7 @@ function Footer() {
         </div>
 
         <div className="footer-bottom">
-          <p>&copy; 2024 StyleHub. All rights reserved.</p>
+          <p>&copy; 2024 Bhuvi Creations. All rights reserved.</p>
           <div className="footer-links">
             <a href="#privacy">Privacy Policy</a>
             <a href="#terms">Terms of Service</a>

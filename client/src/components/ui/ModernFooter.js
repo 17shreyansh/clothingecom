@@ -247,9 +247,9 @@ function ModernFooter() {
                   <LocationIcon />
                 </div>
                 <div className="contact-text">
-                  123 Fashion Street<br />
-                  Bandra West, Mumbai<br />
-                  Maharashtra 400050
+                  Lajpat Nagar, Sahibabad<br />
+                  Ghaziabad, UP - 201005<br />
+                  India
                 </div>
               </ContactItem>
               <ContactItem>
@@ -257,7 +257,7 @@ function ModernFooter() {
                   <PhoneIcon />
                 </div>
                 <div className="contact-text">
-                  +91 98765 43210<br />
+                  +91 9560540494<br />
                   Mon-Sat: 10 AM - 8 PM
                 </div>
               </ContactItem>
@@ -266,8 +266,8 @@ function ModernFooter() {
                   <EmailIcon />
                 </div>
                 <div className="contact-text">
-                  info@bhuvicreations.com<br />
-                  support@bhuvicreations.com
+                  bhuvicreations22@gmail.com<br />
+                  info@bhuvicreations.com
                 </div>
               </ContactItem>
             </FooterSection>
