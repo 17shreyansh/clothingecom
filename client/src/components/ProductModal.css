@@ -95,10 +95,63 @@
   flex: 1;
   overflow-y: auto;
   padding: 2rem;
+  display: flex;
+  gap: 2rem;
 }
 
 .tab-content {
   animation: fadeIn 0.3s ease-in-out;
+  flex: 1;
+}
+
+.validation-sidebar {
+  width: 250px;
+  padding: 1rem;
+  background-color: #f8f9fa;
+  border-radius: 8px;
+  height: fit-content;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  display: none;
+}
+
+.validation-sidebar.show {
+  display: block;
+}
+
+.validation-sidebar h4 {
+  margin-top: 0;
+  margin-bottom: 1rem;
+  font-size: 1rem;
+  color: #495057;
+  border-bottom: 1px solid #dee2e6;
+  padding-bottom: 0.5rem;
+}
+
+.validation-item {
+  margin-bottom: 1rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid #eee;
+}
+
+.validation-item:last-child {
+  border-bottom: none;
+}
+
+.validation-item h5 {
+  margin: 0 0 0.5rem 0;
+  font-size: 0.875rem;
+  color: #212529;
+}
+
+.validation-item p {
+  margin: 0;
+  font-size: 0.75rem;
+  color: #6c757d;
+  line-height: 1.4;
+}
+
+.validation-item.error h5 {
+  color: var(--error-color);
 }
 
 .form-grid {
@@ -130,6 +183,40 @@
   transition: all 0.2s ease;
   background-color: var(--bg-primary);
   color: var(--text-primary);
+}
+
+.category-select-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.category-select-wrapper .form-select {
+  flex: 1;
+  padding-right: 2.5rem;
+}
+
+.create-category-btn {
+  position: absolute;
+  right: 0;
+  top: 0;
+  height: 100%;
+  width: 40px;
+  border: none;
+  background-color: var(--primary-color);
+  color: white;
+  border-top-right-radius: var(--radius-md);
+  border-bottom-right-radius: var(--radius-md);
+  cursor: pointer;
+  font-size: 1.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.create-category-btn:hover {
+  background-color: var(--primary-dark);
 }
 
 .form-input:focus,
@@ -356,7 +443,7 @@
   padding: 1.5rem 2rem;
   border-top: 1px solid var(--border-light);
   display: flex;
-  justify-content: flex-end;
+  align-items: center;
   gap: 1rem;
   background-color: var(--bg-secondary);
 }

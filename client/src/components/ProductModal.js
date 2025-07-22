@@ -19,6 +19,8 @@ function ProductModal({ product, categories, onClose }) {
   const [imageFiles, setImageFiles] = useState([]);
   const [variants, setVariants] = useState([{ size: 'M', color: 'Black', stock: 0 }]);
   const [activeTab, setActiveTab] = useState('basic');
+  const [showValidation, setShowValidation] = useState(false);
+  const [validationErrors, setValidationErrors] = useState({});
 
   const isEditing = !!product;
 
@@ -50,7 +52,26 @@ function ProductModal({ product, categories, onClose }) {
     }
   }, [product]);
 
-  async function handleSubmit(values) {
+  async function handleSubmit(values, { validateForm }) {
+    // Validate the form first
+    const errors = await validateForm(values);
+    const hasErrors = Object.keys(errors).length > 0;
+    
+    if (hasErrors) {
+      setValidationErrors(errors);
+      setShowValidation(true);
+      
+      // Switch to the tab with the first error
+      if (errors.name || errors.description || errors.brand || errors.price || errors.category) {
+        setActiveTab('basic');
+      } else if (errors.variants) {
+        setActiveTab('variants');
+      }
+      
+      toast.error('Please fix the validation errors before submitting');
+      return;
+    }
+    
     setLoading(true);
     try {
       const formData = new FormData();
@@ -175,7 +196,9 @@ function ProductModal({ product, categories, onClose }) {
                       value={formik.values.name}
                       onChange={formik.handleChange}
                       onBlur={formik.handleBlur}
+                      placeholder="Enter product name (max 100 characters)"
                     />
+                    <small className="form-help">Required. Maximum 100 characters.</small>
                     {formik.touched.name && formik.errors.name && (
                       <div className="form-error">{formik.errors.name}</div>
                     )}
@@ -202,7 +225,13 @@ function ProductModal({ product, categories, onClose }) {
                       name="category"
                       className={`form-select ${formik.touched.category && formik.errors.category ? 'error' : ''}`}
                       value={formik.values.category}
-                      onChange={formik.handleChange}
+                      onChange={(e) => {
+                        if (e.target.value === 'create-new') {
+                          window.location.href = '/admin/categories';
+                          return;
+                        }
+                        formik.handleChange(e);
+                      }}
                       onBlur={formik.handleBlur}
                     >
                       <option value="">Select Category</option>
@@ -211,6 +240,8 @@ function ProductModal({ product, categories, onClose }) {
                           {category.name}
                         </option>
                       ))}
+                      <option value="create-new" disabled>──────────────</option>
+                      <option value="create-new">Create New Category</option>
                     </select>
                     {formik.touched.category && formik.errors.category && (
                       <div className="form-error">{formik.errors.category}</div>
@@ -487,9 +518,63 @@ function ProductModal({ product, categories, onClose }) {
                 </div>
               </div>
             )}
+            {/* Validation Sidebar */}
+            <div className={`validation-sidebar ${showValidation ? 'show' : ''}`}>
+              <h4>Required Fields</h4>
+              {validationErrors.name && (
+                <div className="validation-item error">
+                  <h5>Product Name</h5>
+                  <p>{validationErrors.name}</p>
+                </div>
+              )}
+              {validationErrors.brand && (
+                <div className="validation-item error">
+                  <h5>Brand</h5>
+                  <p>{validationErrors.brand}</p>
+                </div>
+              )}
+              {validationErrors.category && (
+                <div className="validation-item error">
+                  <h5>Category</h5>
+                  <p>{validationErrors.category}</p>
+                </div>
+              )}
+              {validationErrors.price && (
+                <div className="validation-item error">
+                  <h5>Price</h5>
+                  <p>{validationErrors.price}</p>
+                </div>
+              )}
+              {validationErrors.description && (
+                <div className="validation-item error">
+                  <h5>Description</h5>
+                  <p>{validationErrors.description}</p>
+                </div>
+              )}
+              {validationErrors.shortDescription && (
+                <div className="validation-item error">
+                  <h5>Short Description</h5>
+                  <p>{validationErrors.shortDescription}</p>
+                </div>
+              )}
+              {!validationErrors.name && !validationErrors.brand && !validationErrors.category && 
+               !validationErrors.price && !validationErrors.description && !validationErrors.shortDescription && (
+                <div className="validation-item">
+                  <p>All required fields are filled correctly.</p>
+                </div>
+              )}
+            </div>
           </div>
 
           <div className="modal-footer">
+            <button 
+              type="button" 
+              onClick={() => setShowValidation(!showValidation)} 
+              className="btn btn-outline"
+            >
+              {showValidation ? 'Hide Validation' : 'Show Validation'}
+            </button>
+            <div style={{ flex: 1 }}></div>
             <button type="button" onClick={onClose} className="btn btn-outline">
               Cancel
             </button>

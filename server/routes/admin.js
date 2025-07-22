@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { protect, adminOnly } = require('../middlewares/auth');
+const { protect, adminOnly } = require('../middleware/auth');
 const {
   getDashboardStats,
   getAllProducts,

@@ -4,7 +4,7 @@ const {
   verifyPayment,
   razorpayWebhook
 } = require('../controllers/payments');
-const { protect } = require('../middlewares/auth');
+const { protect } = require('../middleware/auth');
 
 const router = express.Router();
 

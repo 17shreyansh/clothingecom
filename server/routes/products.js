@@ -12,7 +12,7 @@ const {
   addReview,
   getProductReviews
 } = require('../controllers/products');
-const { protect, optionalAuth } = require('../middlewares/auth');
+const { protect, optionalAuth } = require('../middleware/auth');
 
 const router = express.Router();
 

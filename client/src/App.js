@@ -9,6 +9,7 @@ import ModernFooter from './components/ui/ModernFooter';
 import ProtectedRoute from './components/ProtectedRoute';
 import AdminRoute from './components/AdminRoute';
 import UniversalLoader from './components/ui/UniversalLoader';
+import TestConnection from './components/TestConnection';
 import './App.css';
 
 // Lazy load pages for better performance
@@ -24,6 +25,8 @@ const Orders = lazy(() => import('./pages/Orders'));
 const OrderDetail = lazy(() => import('./pages/OrderDetail'));
 const Wishlist = lazy(() => import('./pages/Wishlist'));
 const Contact = lazy(() => import('./pages/Contact'));
+
+// Test component (not lazy loaded for immediate testing)
 
 // Admin Pages
 const AdminDashboard = lazy(() => import('./pages/admin/Dashboard'));
@@ -96,6 +99,15 @@ function App() {
                 <ModernHeader />
                 <main style={{ minHeight: 'calc(100vh - 160px)' }}>
                   <Contact />
+                </main>
+                <ModernFooter />
+              </>
+            } />
+            <Route path="/test-connection" element={
+              <>
+                <ModernHeader />
+                <main style={{ minHeight: 'calc(100vh - 160px)' }}>
+                  <TestConnection />
                 </main>
                 <ModernFooter />
               </>

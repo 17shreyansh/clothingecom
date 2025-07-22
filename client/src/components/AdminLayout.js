@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { 
   FiHome, FiPackage, FiShoppingBag, FiUsers, FiTag, 
@@ -12,6 +12,13 @@ function AdminLayout({ children }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
   const { user, logout } = useAuth();
+  
+  // Close sidebar when route changes on mobile
+  useEffect(() => {
+    if (window.innerWidth < 1024) {
+      setSidebarOpen(false);
+    }
+  }, [location.pathname]);
 
   const menuItems = [
     { path: '/admin', icon: FiHome, label: 'Dashboard', exact: true },
@@ -97,7 +104,7 @@ function AdminLayout({ children }) {
         {/* Top Bar */}
         <header className="admin-header">
           <button 
-            className="sidebar-toggle lg:hidden"
+            className="sidebar-toggle"
             onClick={() => setSidebarOpen(true)}
           >
             <FiMenu />

@@ -161,6 +161,25 @@
   gap: 1.5rem;
 }
 
+/* Analytics Styles */
+.dashboard-analytics {
+  margin-bottom: 2rem;
+}
+
+.analytics-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1.5rem;
+}
+
+.analytics-item {
+  min-height: 350px;
+}
+
+.analytics-item-full {
+  grid-column: 1 / -1;
+}
+
 .dashboard-card {
   background-color: var(--bg-primary);
   border-radius: var(--radius-xl);
@@ -433,6 +452,14 @@
 
   .dashboard-grid {
     grid-template-columns: 1fr;
+  }
+  
+  .analytics-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .analytics-item-full {
+    grid-column: auto;
   }
 
   .table-header,

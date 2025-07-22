@@ -5,6 +5,8 @@ import {
 } from 'react-icons/fi';
 import AdminLayout from '../../components/AdminLayout';
 import api from '../../services/api';
+import DashboardAnalytics from '../../components/charts/DashboardAnalytics';
+import AnimatedCounter from '../../components/charts/AnimatedCounter';
 import './Dashboard.css';
 
 function Dashboard() {
@@ -116,14 +118,30 @@ function Dashboard() {
                 </div>
               </div>
               <div className="stat-content">
-                <h3>{stat.value}</h3>
+                <h3>
+                  {stat.title === 'Total Revenue' ? (
+                    <AnimatedCounter 
+                      value={parseInt(stat.value.replace(/[^0-9]/g, ''))} 
+                      prefix="₹" 
+                      enableOnMount={true} 
+                    />
+                  ) : (
+                    <AnimatedCounter 
+                      value={stat.value} 
+                      enableOnMount={true} 
+                    />
+                  )}
+                </h3>
                 <p>{stat.title}</p>
               </div>
             </div>
           ))}
         </div>
 
-        {/* Charts and Tables */}
+        {/* Analytics Charts */}
+        <DashboardAnalytics timeRange={timeRange} />
+        
+        {/* Tables and Quick Actions */}
         <div className="dashboard-grid">
           {/* Recent Orders */}
           <div className="dashboard-card">
