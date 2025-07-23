@@ -1,7 +1,10 @@
 import axios from 'axios';
 
-// Use relative URL for API requests to work with the proxy
-const API_BASE_URL = '/api';
+// Use absolute URL for production and relative URL for development
+const isProduction = process.env.NODE_ENV === 'production';
+const API_BASE_URL = isProduction 
+  ? 'https://clothingecom.onrender.com/api' 
+  : '/api';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
