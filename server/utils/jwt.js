@@ -16,7 +16,7 @@ const sendTokenResponse = (user, statusCode, res, message = 'Success') => {
     expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax'
+    sameSite: 'None'
   };
 
   res.status(statusCode)
@@ -40,7 +40,9 @@ const sendTokenResponse = (user, statusCode, res, message = 'Success') => {
 const clearTokenResponse = (res, message = 'Logged out successfully') => {
   res.cookie('token', 'none', {
     expires: new Date(Date.now() + 10 * 1000),
-    httpOnly: true
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'None'
   });
 
   res.status(200).json({

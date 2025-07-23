@@ -94,6 +94,10 @@ app.use('/api/products', productRoutes);
 app.use('/api/categories', categoryRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/payments', paymentRoutes);
+// These routes share the same base path '/api/admin' but handle different endpoints:
+// adminRoutes handles general admin functionality
+// analyticsRoutes specifically handles analytics-related admin endpoints
+// They can coexist since Express matches routes in order and each route file defines unique sub-paths
 app.use('/api/admin', adminRoutes);
 app.use('/api/admin', analyticsRoutes); // Analytics routes under admin namespace
 app.use('/api/homepage', homepageContentRoutes);
