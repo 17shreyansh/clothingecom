@@ -241,11 +241,7 @@ const VariantSelector = styled.div`
           font-weight: 600;
         }
         
-        &.disabled {
-          opacity: 0.5;
-          cursor: not-allowed;
-          background: #f5f5f5;
-        }
+
       }
       
       .color-option {
@@ -743,10 +739,11 @@ function ModernProductDetail() {
                               key={size}
                               className={`variant-option ${
                                 selectedSize === size ? 'selected' : ''
-                              } ${!available ? 'disabled' : ''}`}
-                              onClick={() => available && setSelectedSize(size)}
+                              }`}
+                              onClick={() => setSelectedSize(size)}
                             >
                               {size}
+                              {!available && <span style={{ fontSize: '0.7rem', color: '#999', display: 'block' }}>Out of Stock</span>}
                             </div>
                           );
                         })}
@@ -767,18 +764,38 @@ function ModernProductDetail() {
                               key={color}
                               className={`variant-option ${
                                 selectedColor === color ? 'selected' : ''
-                              } ${!available ? 'disabled' : ''}`}
-                              onClick={() => available && setSelectedColor(color)}
+                              }`}
+                              onClick={() => setSelectedColor(color)}
                               style={{
                                 backgroundColor: variant?.colorCode || color.toLowerCase(),
                                 color: variant?.colorCode ? 'transparent' : 'inherit',
                                 minWidth: variant?.colorCode ? '40px' : 'auto',
                                 height: variant?.colorCode ? '40px' : 'auto',
-                                borderRadius: variant?.colorCode ? '50%' : '8px'
+                                borderRadius: variant?.colorCode ? '50%' : '8px',
+                                position: 'relative'
                               }}
-                              title={color}
+                              title={`${color}${!available ? ' - Out of Stock' : ''}`}
                             >
-                              {!variant?.colorCode && color}
+                              {!variant?.colorCode && (
+                                <>
+                                  {color}
+                                  {!available && <span style={{ fontSize: '0.7rem', color: '#999', display: 'block' }}>Out of Stock</span>}
+                                </>
+                              )}
+                              {variant?.colorCode && !available && (
+                                <div style={{
+                                  position: 'absolute',
+                                  top: '50%',
+                                  left: '50%',
+                                  transform: 'translate(-50%, -50%)',
+                                  fontSize: '0.6rem',
+                                  color: '#fff',
+                                  textShadow: '1px 1px 1px rgba(0,0,0,0.5)',
+                                  fontWeight: 'bold'
+                                }}>
+                                  OOS
+                                </div>
+                              )}
                             </div>
                           );
                         })}
