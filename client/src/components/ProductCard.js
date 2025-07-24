@@ -45,11 +45,11 @@ function ProductCard({ product, viewMode = 'grid' }) {
     setShowQuickView(true);
   };
 
-  const discountPercentage = product.compareAtPrice && product.compareAtPrice > product.price 
-    ? Math.round(((product.compareAtPrice - product.price) / product.compareAtPrice) * 100) 
-    : 0;
-  const finalPrice = product.price;
+  const finalPrice = product.price || 0;
   const originalPrice = product.compareAtPrice;
+  const discountPercentage = originalPrice && originalPrice > finalPrice 
+    ? Math.round(((originalPrice - finalPrice) / originalPrice) * 100) 
+    : 0;
 
   if (viewMode === 'list') {
     return (

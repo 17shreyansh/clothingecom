@@ -209,9 +209,10 @@ const ModernProductCard = ({ product, onWishlistToggle, isWishlisted = false }) 
     }
   };
 
-  const currentPrice = product.basePrice || product.price;
-  const discount = product.originalPrice && currentPrice < product.originalPrice
-    ? Math.round(((product.originalPrice - currentPrice) / product.originalPrice) * 100)
+  const currentPrice = product.basePrice || product.price || 0;
+  const originalPrice = product.originalPrice || product.compareAtPrice;
+  const discount = originalPrice && currentPrice < originalPrice
+    ? Math.round(((originalPrice - currentPrice) / originalPrice) * 100)
     : 0;
 
   return (
@@ -227,10 +228,9 @@ const ModernProductCard = ({ product, onWishlistToggle, isWishlisted = false }) 
       >
         <ImageContainer>
           <img
-            src={product.images?.[0].url }
-            alt={product.name}
+            src={product.images?.[0]?.url || '/api/placeholder/300/400'}
+            alt={product.name || 'Product'}
             onLoad={() => setImageLoaded(true)}
-            
           />
           
           {discount > 0 && (
@@ -313,9 +313,10 @@ const ModernProductCard = ({ product, onWishlistToggle, isWishlisted = false }) 
           </Box>
 
           <PriceContainer>
-            <CurrentPrice>₹{(product.price.toLocaleString())}</CurrentPrice>
+            <CurrentPrice>₹{(product.price || 0).toLocaleString()}</CurrentPrice>
+            {product.compareAtPrice && product.compareAtPrice > (product.price || 0) && (
               <OriginalPrice>₹{product.compareAtPrice.toLocaleString()}</OriginalPrice>
-            
+            )}
           </PriceContainer>
 
 
