@@ -3,15 +3,18 @@ import { Link, useLocation } from 'react-router-dom';
 import { 
   FiHome, FiPackage, FiShoppingBag, FiUsers, FiTag, 
   FiPercent, FiMenu, FiX, FiLogOut, FiSettings,
-  FiBarChart, FiLayout, FiMail, FiMessageSquare
+  FiBarChart, FiLayout, FiMail, FiMessageSquare, FiBell
 } from 'react-icons/fi';
 import { useAuth } from '../context/AuthContext';
+import { useNotifications } from '../context/NotificationContext';
 import './AdminLayout.css';
 
 function AdminLayout({ children }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
   const location = useLocation();
   const { user, logout } = useAuth();
+  const { counts, notifications, fetchNotifications, markAsRead } = useNotifications();
   
   // Close sidebar when route changes on mobile
   useEffect(() => {
@@ -20,16 +23,46 @@ function AdminLayout({ children }) {
     }
   }, [location.pathname]);
 
+  // Close notification dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (showNotifications && !event.target.closest('.notification-dropdown')) {
+        setShowNotifications(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showNotifications]);
+
   const menuItems = [
     { path: '/admin', icon: FiHome, label: 'Dashboard', exact: true },
     { path: '/admin/products', icon: FiPackage, label: 'Products' },
-    { path: '/admin/orders', icon: FiShoppingBag, label: 'Orders' },
+    { 
+      path: '/admin/orders', 
+      icon: FiShoppingBag, 
+      label: 'Orders',
+      count: counts.orders
+    },
     { path: '/admin/users', icon: FiUsers, label: 'Users' },
     { path: '/admin/categories', icon: FiTag, label: 'Categories' },
     { path: '/admin/discounts', icon: FiPercent, label: 'Discounts' },
     { path: '/admin/homepage', icon: FiLayout, label: 'Homepage Editor' },
     { path: '/admin/email-settings', icon: FiMail, label: 'Email Settings' },
-    { path: '/admin/contacts', icon: FiMessageSquare, label: 'Contact Management' },
+    { 
+      path: '/admin/contacts', 
+      icon: FiMessageSquare, 
+      label: 'Contact Leads',
+      count: counts.leads
+    },
+    { 
+      path: '/admin/notifications', 
+      icon: FiBell, 
+      label: 'Notifications',
+      count: counts.total
+    },
   ];
 
   const isActive = (path, exact = false) => {
@@ -76,6 +109,9 @@ function AdminLayout({ children }) {
                 >
                   <item.icon />
                   <span>{item.label}</span>
+                  {item.count > 0 && (
+                    <span className="nav-badge">{item.count}</span>
+                  )}
                 </Link>
               </li>
             ))}
@@ -115,9 +151,55 @@ function AdminLayout({ children }) {
           </div>
 
           <div className="header-actions">
-            <button className="header-btn">
-              <FiSettings />
-            </button>
+            <div className="notification-dropdown">
+              <button 
+                className="notification-btn"
+                onClick={() => {
+                  setShowNotifications(!showNotifications);
+                  if (!showNotifications) {
+                    fetchNotifications({ limit: 10 });
+                  }
+                }}
+              >
+                <FiBell />
+                {counts.total > 0 && (
+                  <span className="notification-badge">{counts.total}</span>
+                )}
+              </button>
+              
+              {showNotifications && (
+                <div className="notification-panel">
+                  <div className="notification-header">
+                    <h3>Notifications</h3>
+                    <span className="notification-count">{counts.total} unread</span>
+                  </div>
+                  <div className="notification-list">
+                    {notifications.length > 0 ? (
+                      notifications.slice(0, 5).map(notification => (
+                        <div 
+                          key={notification._id} 
+                          className={`notification-item ${!notification.isRead ? 'unread' : ''}`}
+                          onClick={() => markAsRead(notification._id)}
+                        >
+                          <div className="notification-content">
+                            <h4>{notification.title}</h4>
+                            <p>{notification.message}</p>
+                            <span className="notification-time">
+                              {new Date(notification.createdAt).toLocaleDateString()}
+                            </span>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="no-notifications">
+                        <p>No notifications</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+            
             <div className="admin-user-header">
               <div className="user-avatar">
                 {user?.name?.charAt(0).toUpperCase()}

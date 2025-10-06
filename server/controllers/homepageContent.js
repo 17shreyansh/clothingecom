@@ -148,7 +148,7 @@ exports.uploadImage = async (req, res) => {
       console.log('File uploaded:', req.file.filename);
       
       // Create image URL
-      const imageUrl = `/uploads/homepage/${req.file.filename}`;
+      const imageUrl = `https://api.bhuvicreations.com/uploads/homepage/${req.file.filename}`;
       
       res.status(200).json({
         success: true,

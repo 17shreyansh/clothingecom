@@ -66,8 +66,21 @@ function Cart() {
               <div key={`${item.product._id}-${item.size}-${item.color}`} className="cart-item">
                 <div className="item-image">
                   <img
-                    src={item.product.images?.[0]?.url || '/api/placeholder/150/200'}
+                    src={(() => {
+                      console.log('Cart item images:', item.product.images);
+                      const image = item.product.images?.[0];
+                      console.log('First image:', image);
+                      if (!image) return '/api/placeholder/150/200';
+                      if (typeof image === 'string') return image;
+                      if (image.url) return image.url;
+                      if (image.public_id) return `https://api.bhuvicreations.com/uploads/${image.public_id}`;
+                      return '/api/placeholder/150/200';
+                    })()
+                    }
                     alt={item.product.name}
+                    onError={(e) => {
+                      e.target.src = '/api/placeholder/150/200';
+                    }}
                   />
                 </div>
 

@@ -1,9 +1,26 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { FiMail, FiPhone, FiMapPin } from 'react-icons/fi';
+import { getCategories } from '../services/categoriesService';
 import './Footer.css';
 
 function Footer() {
+  const [categories, setCategories] = useState([]);
+
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        console.log('Footer: Fetching categories...');
+        const response = await getCategories();
+        console.log('Footer: Categories response:', response);
+        setCategories(response.categories || []);
+      } catch (error) {
+        console.error('Footer: Failed to fetch categories:', error);
+      }
+    };
+    fetchCategories();
+  }, []);
+
   return (
     <footer className="footer">
       <div className="container">
@@ -36,8 +53,13 @@ function Footer() {
             <ul>
               <li><Link to="/">Home</Link></li>
               <li><Link to="/products">Products</Link></li>
-              <li><Link to="/products?category=men">Men's Fashion</Link></li>
-              <li><Link to="/products?category=women">Women's Fashion</Link></li>
+              {categories.map(category => (
+                <li key={category._id}>
+                  <Link to={`/products?category=${category.slug}`}>
+                    {category.name}
+                  </Link>
+                </li>
+              ))}
               <li><Link to="/contact">Contact Us</Link></li>
             </ul>
           </div>

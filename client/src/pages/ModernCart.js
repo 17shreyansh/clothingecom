@@ -283,8 +283,19 @@ function ModernCart() {
                   <Box sx={{ display: 'flex', alignItems: 'flex-start' }}>
                     <ProductImage>
                       <img
-                        src={item.product.images?.[0] || '/placeholder-image.jpg'}
+                        src={(() => {
+                          const image = item.product.images?.[0];
+                          if (!image) return '/placeholder-image.jpg';
+                          if (typeof image === 'string') return image;
+                          if (image.url) return image.url;
+                          if (image.public_id) return `https://api.bhuvicreations.com/uploads/${image.public_id}`;
+                          return '/placeholder-image.jpg';
+                        })()
+                        }
                         alt={item.product.name}
+                        onError={(e) => {
+                          e.target.src = '/placeholder-image.jpg';
+                        }}
                       />
                     </ProductImage>
 

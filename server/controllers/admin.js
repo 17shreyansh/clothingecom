@@ -150,7 +150,7 @@ exports.createProduct = async (req, res) => {
     // Handle image uploads
     if (req.files && req.files.length > 0) {
       productData.images = req.files.map(file => ({
-        url: `/uploads/${file.filename}`,
+        url: `https://api.bhuvicreations.com/uploads/${file.filename}`,
         public_id: file.filename
       }));
     }
@@ -220,18 +220,28 @@ exports.updateProduct = async (req, res) => {
     updateData.isNewArrival = updateData.isNewArrival === 'true';
     updateData.isActive = updateData.isActive === 'true';
 
-    // Handle new image uploads
-    if (req.files && req.files.length > 0) {
+    // Handle image updates
+    if (updateData.existingImages) {
+      const existingImages = JSON.parse(updateData.existingImages);
+      
+      if (req.files && req.files.length > 0) {
+        // Add new images to existing ones
+        const newImages = req.files.map(file => ({
+          url: `https://api.bhuvicreations.com/uploads/${file.filename}`,
+          public_id: file.filename
+        }));
+        updateData.images = [...existingImages, ...newImages];
+      } else {
+        // Only update existing images (removal/reordering)
+        updateData.images = existingImages;
+      }
+    } else if (req.files && req.files.length > 0) {
+      // Only new images, keep existing ones
       const newImages = req.files.map(file => ({
-        url: `/uploads/${file.filename}`,
+        url: `https://api.bhuvicreations.com/uploads/${file.filename}`,
         public_id: file.filename
       }));
-
-      // Combine existing and new images
-      const existingImages = updateData.existingImages ? 
-        JSON.parse(updateData.existingImages) : product.images;
-      
-      updateData.images = [...existingImages, ...newImages];
+      updateData.images = [...(product.images || []), ...newImages];
     }
 
     // Calculate total stock
@@ -440,7 +450,7 @@ exports.updateOrderStatus = async (req, res) => {
 exports.getAllUsers = async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 10;
+    const limit = parseInt(req.query.limit) || 50;
     const skip = (page - 1) * limit;
 
     let query = {};
@@ -448,7 +458,8 @@ exports.getAllUsers = async (req, res) => {
     if (req.query.search) {
       query.$or = [
         { name: { $regex: req.query.search, $options: 'i' } },
-        { email: { $regex: req.query.search, $options: 'i' } }
+        { email: { $regex: req.query.search, $options: 'i' } },
+        { phone: { $regex: req.query.search, $options: 'i' } }
       ];
     }
 
@@ -456,13 +467,21 @@ exports.getAllUsers = async (req, res) => {
       query.role = req.query.role;
     }
 
-    const users = await User.find(query)
-      .select('-password')
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(limit);
+    if (req.query.status) {
+      query.isActive = req.query.status === 'active';
+    }
 
-    const totalUsers = await User.countDocuments(query);
+    const [users, totalUsers, activeUsers, inactiveUsers] = await Promise.all([
+      User.find(query)
+        .select('-password')
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit),
+      User.countDocuments(query),
+      User.countDocuments({ isActive: true }),
+      User.countDocuments({ isActive: false })
+    ]);
+
     const totalPages = Math.ceil(totalUsers / limit);
 
     res.status(200).json({
@@ -470,7 +489,12 @@ exports.getAllUsers = async (req, res) => {
       users,
       totalPages,
       currentPage: page,
-      totalUsers
+      totalUsers,
+      stats: {
+        total: totalUsers,
+        active: activeUsers,
+        inactive: inactiveUsers
+      }
     });
   } catch (error) {
     console.error('Get users error:', error);
@@ -481,12 +505,12 @@ exports.getAllUsers = async (req, res) => {
   }
 };
 
-// @desc    Update user role
+// @desc    Update user
 // @route   PATCH /api/admin/users/:id
 // @access  Private/Admin
-exports.updateUserRole = async (req, res) => {
+exports.updateUser = async (req, res) => {
   try {
-    const { role, isActive } = req.body;
+    const { name, email, phone, role, isActive, emailVerified } = req.body;
     
     const user = await User.findById(req.params.id).select('-password');
     if (!user) {
@@ -496,8 +520,32 @@ exports.updateUserRole = async (req, res) => {
       });
     }
 
+    // Prevent admin from deactivating themselves
+    if (req.user.id === user._id.toString() && isActive === false) {
+      return res.status(400).json({
+        success: false,
+        message: 'You cannot deactivate your own account'
+      });
+    }
+
+    // Check if email is already taken by another user
+    if (email && email !== user.email) {
+      const existingUser = await User.findOne({ email, _id: { $ne: req.params.id } });
+      if (existingUser) {
+        return res.status(400).json({
+          success: false,
+          message: 'Email is already taken'
+        });
+      }
+    }
+
+    // Update fields
+    if (name) user.name = name;
+    if (email) user.email = email;
+    if (phone !== undefined) user.phone = phone;
     if (role) user.role = role;
     if (typeof isActive !== 'undefined') user.isActive = isActive;
+    if (typeof emailVerified !== 'undefined') user.emailVerified = emailVerified;
 
     await user.save();
 
@@ -510,6 +558,208 @@ exports.updateUserRole = async (req, res) => {
     console.error('Update user error:', error);
     res.status(500).json({
       success: false,
+      message: error.message || 'Server error'
+    });
+  }
+};
+
+// Legacy function for backward compatibility
+exports.updateUserRole = exports.updateUser;
+
+// @desc    Create new user
+// @route   POST /api/admin/users
+// @access  Private/Admin
+exports.createUser = async (req, res) => {
+  try {
+    const { name, email, phone, password, role = 'user', isActive = true, emailVerified = false } = req.body;
+
+    // Check if user already exists
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      return res.status(400).json({
+        success: false,
+        message: 'User with this email already exists'
+      });
+    }
+
+    // Create new user
+    const user = await User.create({
+      name,
+      email,
+      phone,
+      password,
+      role,
+      isActive,
+      emailVerified
+    });
+
+    res.status(201).json({
+      success: true,
+      message: 'User created successfully',
+      user
+    });
+  } catch (error) {
+    console.error('Create user error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Server error'
+    });
+  }
+};
+
+// @desc    Ban user
+// @route   PATCH /api/admin/users/:id/ban
+// @access  Private/Admin
+exports.banUser = async (req, res) => {
+  try {
+    const { reason } = req.body;
+    
+    const user = await User.findById(req.params.id);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    // Don't allow banning admin users
+    if (user.role === 'admin') {
+      return res.status(400).json({
+        success: false,
+        message: 'Cannot ban admin user'
+      });
+    }
+
+    // Don't allow admin to ban themselves
+    if (req.user.id === user._id.toString()) {
+      return res.status(400).json({
+        success: false,
+        message: 'You cannot ban your own account'
+      });
+    }
+
+    await user.banUser(reason || 'No reason provided', req.user.id);
+
+    res.status(200).json({
+      success: true,
+      message: 'User banned successfully',
+      user
+    });
+  } catch (error) {
+    console.error('Ban user error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error'
+    });
+  }
+};
+
+// @desc    Unban user
+// @route   PATCH /api/admin/users/:id/unban
+// @access  Private/Admin
+exports.unbanUser = async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    if (!user.isBanned) {
+      return res.status(400).json({
+        success: false,
+        message: 'User is not banned'
+      });
+    }
+
+    await user.unbanUser();
+
+    res.status(200).json({
+      success: true,
+      message: 'User unbanned successfully',
+      user
+    });
+  } catch (error) {
+    console.error('Unban user error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error'
+    });
+  }
+};
+
+// @desc    Reset user password
+// @route   PATCH /api/admin/users/:id/reset-password
+// @access  Private/Admin
+exports.resetUserPassword = async (req, res) => {
+  try {
+    const { newPassword } = req.body;
+    
+    if (!newPassword || newPassword.length < 6) {
+      return res.status(400).json({
+        success: false,
+        message: 'Password must be at least 6 characters long'
+      });
+    }
+
+    const user = await User.findById(req.params.id);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    user.password = newPassword;
+    user.loginAttempts = 0;
+    user.lockUntil = undefined;
+    await user.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Password reset successfully'
+    });
+  } catch (error) {
+    console.error('Reset password error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error'
+    });
+  }
+};
+
+// @desc    Get user details
+// @route   GET /api/admin/users/:id
+// @access  Private/Admin
+exports.getUserById = async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id)
+      .select('-password')
+      .populate('bannedBy', 'name');
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    // Get user's order count
+    const orderCount = await Order.countDocuments({ user: req.params.id });
+
+    res.status(200).json({
+      success: true,
+      user: {
+        ...user.toObject(),
+        orderCount
+      }
+    });
+  } catch (error) {
+    console.error('Get user error:', error);
+    res.status(500).json({
+      success: false,
       message: 'Server error'
     });
   }
@@ -520,7 +770,9 @@ exports.updateUserRole = async (req, res) => {
 // @access  Private/Admin
 exports.deleteUser = async (req, res) => {
   try {
+    const { force } = req.query;
     const user = await User.findById(req.params.id);
+    
     if (!user) {
       return res.status(404).json({
         success: false,
@@ -533,6 +785,25 @@ exports.deleteUser = async (req, res) => {
       return res.status(400).json({
         success: false,
         message: 'Cannot delete admin user'
+      });
+    }
+
+    // Don't allow admin to delete themselves
+    if (req.user.id === user._id.toString()) {
+      return res.status(400).json({
+        success: false,
+        message: 'You cannot delete your own account'
+      });
+    }
+
+    // Check if user has orders
+    const orderCount = await Order.countDocuments({ user: req.params.id });
+    if (orderCount > 0 && force !== 'true') {
+      return res.status(400).json({
+        success: false,
+        message: `Cannot delete user with ${orderCount} existing orders. Use force delete or consider deactivating instead.`,
+        hasOrders: true,
+        orderCount
       });
     }
 

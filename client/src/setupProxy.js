@@ -1,14 +1,28 @@
 const { createProxyMiddleware } = require('http-proxy-middleware');
 
 module.exports = function(app) {
+  // Proxy for /api
   app.use(
     '/api',
     createProxyMiddleware({
-      target: 'https://clothingecom.onrender.com',
+      target: 'https://bhuvicreations.com',
       changeOrigin: true,
-      secure: false,
+      secure: true,
       headers: {
-        'Origin': 'https://clothingecom.vercel.app'
+        Origin: 'https://bhuvicreations.com'
+      }
+    })
+  );
+
+  // Proxy for /uploads
+  app.use(
+    '/uploads',
+    createProxyMiddleware({
+      target: 'https://api.bhuvicreations.com',
+      changeOrigin: true,
+      secure: true,
+      headers: {
+        Origin: 'https://bhuvicreations.com'
       }
     })
   );

@@ -5,15 +5,22 @@ const {
   applyCoupon,
   getUserOrders,
   getOrderById,
-  cancelOrder
+  cancelOrder,
+  createTestCoupon,
+  initPayment
 } = require('../controllers/orders');
 const { protect, admin } = require('../middleware/auth');
 const Order = require('../models/Order');
 
 const router = express.Router();
 
-// All routes are protected
+// Public routes (development only)
+router.post('/create-test-coupon', createTestCoupon);
+
+// All routes below are protected
 router.use(protect);
+
+router.post('/init-payment', initPayment);
 
 router.post('/', createOrder);
 router.post('/verify-payment', verifyPayment);

@@ -79,7 +79,7 @@ function FilterSidebar({ categories, filters, onFilterChange, onClearFilters, is
                     name="category"
                     value=""
                     checked={!filters.category}
-                    onChange={() => onFilterChange('category', '')}
+                    onChange={() => onFilterChange('categories', '')
                   />
                   <span>All Categories</span>
                 </label>
@@ -90,7 +90,7 @@ function FilterSidebar({ categories, filters, onFilterChange, onClearFilters, is
                       name="category"
                       value={category.slug}
                       checked={filters.category === category.slug}
-                      onChange={() => onFilterChange('category', category.slug)}
+                      onChange={() => onFilterChange('categories', category.slug)}
                     />
                     <span>{category.name}</span>
                   </label>

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { 
   Box, 
   Drawer, 
@@ -27,7 +28,8 @@ import {
   PhotoLibrary as GalleryIcon,
   Landscape as BannerIcon,
   Menu as MenuIcon,
-  Save as SaveIcon
+  Save as SaveIcon,
+  ArrowBack as ArrowBackIcon
 } from '@mui/icons-material';
 import { getHomepageContent, toggleSectionVisibility } from '../../services/homepageService';
 import HeroEditor from './editors/HeroEditor';
@@ -57,6 +59,7 @@ const sectionConfig = [
 ];
 
 const HomepageEditor = () => {
+  const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [activeSection, setActiveSection] = useState('heroSection');
   const [homepageContent, setHomepageContent] = useState(null);
@@ -184,6 +187,15 @@ const HomepageEditor = () => {
         }}
       >
         <Toolbar>
+          <IconButton
+            color="inherit"
+            aria-label="back to admin"
+            edge="start"
+            onClick={() => navigate('/admin')}
+            sx={{ mr: 2 }}
+          >
+            <ArrowBackIcon />
+          </IconButton>
           <IconButton
             color="inherit"
             aria-label="open drawer"

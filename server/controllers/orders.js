@@ -78,6 +78,41 @@ exports.createOrder = async (req, res) => {
     // Generate order number
     const orderNumber = 'ORD' + Date.now() + Math.floor(Math.random() * 1000);
 
+    // Validate discount code if provided
+    let validatedDiscountAmount = 0;
+    if (discountCode) {
+      const discountCodeDoc = await DiscountCode.findOne({ 
+        code: discountCode.toUpperCase(),
+        isActive: true
+      });
+      
+      if (discountCodeDoc) {
+        const validation = discountCodeDoc.isValidForUser(req.user.id);
+        if (validation.valid && calculatedItemsPrice >= discountCodeDoc.minimumOrderAmount) {
+          validatedDiscountAmount = discountCodeDoc.calculateDiscount(calculatedItemsPrice);
+          
+          // Update discount code usage
+          const userUsage = discountCodeDoc.usedBy.find(usage => 
+            usage.user.toString() === req.user.id.toString()
+          );
+          
+          if (userUsage) {
+            userUsage.usedCount += 1;
+            userUsage.lastUsed = new Date();
+          } else {
+            discountCodeDoc.usedBy.push({
+              user: req.user.id,
+              usedCount: 1,
+              lastUsed: new Date()
+            });
+          }
+          
+          discountCodeDoc.usedCount += 1;
+          await discountCodeDoc.save();
+        }
+      }
+    }
+
     // Create order
     const order = await Order.create({
       user: req.user.id,
@@ -91,8 +126,9 @@ exports.createOrder = async (req, res) => {
       itemsPrice: calculatedItemsPrice,
       taxPrice: taxPrice || 0,
       shippingPrice: shippingPrice || 0,
-      discountAmount: discountAmount || 0,
-      totalPrice: calculatedItemsPrice + (taxPrice || 0) + (shippingPrice || 0) - (discountAmount || 0),
+      discountAmount: validatedDiscountAmount,
+      discountCode: discountCode || null,
+      totalPrice: calculatedItemsPrice + (taxPrice || 0) + (shippingPrice || 0) - validatedDiscountAmount,
       orderStatus: 'pending'
     });
 
@@ -335,7 +371,7 @@ exports.applyCoupon = async (req, res) => {
     if (orderAmount < discountCode.minimumOrderAmount) {
       return res.status(400).json({
         success: false,
-        message: `Minimum order amount is ₹${discountCode.minimumOrderAmount}`
+        message: `Minimum order amount is ?${discountCode.minimumOrderAmount}`
       });
     }
 
@@ -353,6 +389,161 @@ exports.applyCoupon = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Server error while applying coupon'
+    });
+  }
+};
+
+
+
+// @desc    Initialize Razorpay payment
+// @route   POST /api/orders/init-payment
+// @access  Private
+exports.initPayment = async (req, res) => {
+  try {
+    const { orderId } = req.body;
+    
+    const order = await Order.findOne({
+      _id: orderId,
+      user: req.user.id
+    });
+    
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: 'Order not found'
+      });
+    }
+    
+    // Generate payment page HTML with server-side key
+    const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Payment - StyleHub</title>
+        <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+    </head>
+    <body>
+        <script>
+        const options = {
+            key: '${process.env.RAZORPAY_KEY_ID}',
+            amount: ${order.totalPrice * 100},
+            currency: 'INR',
+            name: 'StyleHub',
+            description: 'Order #${order.orderNumber}',
+            order_id: '${order.paymentInfo.razorpayOrderId}',
+            handler: function(response) {
+                fetch('/api/orders/verify-payment', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ${req.headers.authorization?.split(' ')[1]}'
+                    },
+                    body: JSON.stringify({
+                        razorpay_order_id: response.razorpay_order_id,
+                        razorpay_payment_id: response.razorpay_payment_id,
+                        razorpay_signature: response.razorpay_signature,
+                        orderId: '${order._id}'
+                    })
+                }).then(res => res.json()).then(data => {
+                    if (data.success) {
+                        window.location.href = '/orders/${order._id}?success=true';
+                    } else {
+                        alert('Payment verification failed');
+                    }
+                });
+            },
+            prefill: {
+                name: '${order.shippingAddress.fullName}',
+                email: '${req.user.email}',
+                contact: '${order.shippingAddress.phone}'
+            },
+            theme: {
+                color: '#2563eb'
+            }
+        };
+        
+        const rzp = new Razorpay(options);
+        rzp.open();
+        
+        rzp.on('payment.failed', function(response) {
+            alert('Payment failed: ' + response.error.description);
+            window.location.href = '/checkout';
+        });
+        </script>
+    </body>
+    </html>`;
+    
+    res.setHeader('Content-Type', 'text/html');
+    res.send(html);
+    
+  } catch (error) {
+    console.error('Init payment error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error'
+    });
+  }
+};
+
+// @desc    Create test discount code (for development)
+// @route   POST /api/orders/create-test-coupon
+// @access  Public (for testing only)
+exports.createTestCoupon = async (req, res) => {
+  try {
+    // Only allow in development
+    if (process.env.NODE_ENV !== 'development') {
+      return res.status(403).json({
+        success: false,
+        message: 'Not allowed in production'
+      });
+    }
+
+    // Check if test coupon already exists
+    const existingCoupon = await DiscountCode.findOne({ code: 'TEST10' });
+    if (existingCoupon) {
+      return res.status(200).json({
+        success: true,
+        message: 'Test coupon already exists: TEST10 - 10% off orders above ?100'
+      });
+    }
+
+    // Use the requesting user as creator (must be admin to access this)
+    const User = require('../models/User');
+    let adminUser = await User.findOne({ role: 'admin' });
+    if (!adminUser) {
+      // Create a default admin if none exists
+      adminUser = await User.create({
+        name: 'Admin',
+        email: 'admin@stylehub.com',
+        password: 'admin123',
+        role: 'admin'
+      });
+    }
+
+    const testCoupon = await DiscountCode.create({
+      code: 'TEST10',
+      description: 'Test discount code - 10% off',
+      type: 'percentage',
+      value: 10,
+      minimumOrderAmount: 100,
+      maximumDiscountAmount: 500,
+      usageLimit: 100,
+      userUsageLimit: 1,
+      validFrom: new Date(),
+      validUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
+      isActive: true,
+      createdBy: adminUser._id
+    });
+
+    res.status(201).json({
+      success: true,
+      message: 'Test coupon created: TEST10 - 10% off orders above ?100 (valid for 30 days)'
+    });
+  } catch (error) {
+    console.error('Create test coupon error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error'
     });
   }
 };

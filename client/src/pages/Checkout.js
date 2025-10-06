@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { FiCreditCard, FiTruck, FiLock } from 'react-icons/fi';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
+import { useLocation } from '../context/LocationContext';
 import api from '../services/api';
 import { toast } from 'react-toastify';
 import './Checkout.css';
@@ -11,11 +12,15 @@ function Checkout() {
   const navigate = useNavigate();
   const { cartItems, getTotalPrice, clearCart } = useCart();
   const { user } = useAuth();
+  const { getStates, getCitiesByState, loading: locationLoading } = useLocation();
   const [loading, setLoading] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState('razorpay');
   const [couponCode, setCouponCode] = useState('');
   const [appliedCoupon, setAppliedCoupon] = useState(null);
   const [couponLoading, setCouponLoading] = useState(false);
+  const [availableCities, setAvailableCities] = useState([]);
+  const [citiesLoading, setCitiesLoading] = useState(false);
+
   
   const [shippingAddress, setShippingAddress] = useState({
     fullName: user?.name || '',
@@ -32,6 +37,7 @@ function Checkout() {
     if (!cartItems || cartItems.length === 0) {
       navigate('/cart');
     }
+    
   }, [cartItems, navigate]);
 
   const itemsPrice = getTotalPrice();
@@ -41,9 +47,36 @@ function Checkout() {
   const totalPrice = itemsPrice + shippingPrice + taxPrice - discountAmount;
 
   const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    
+    // Pincode validation - only allow 6 digits
+    if (name === 'pincode') {
+      const numericValue = value.replace(/\D/g, '').slice(0, 6);
+      setShippingAddress({
+        ...shippingAddress,
+        [name]: numericValue
+      });
+      return;
+    }
+    
+    // State change - update available cities
+    if (name === 'state') {
+      setCitiesLoading(true);
+      getCitiesByState(value).then(cities => {
+        setAvailableCities(cities);
+        setCitiesLoading(false);
+      });
+      setShippingAddress({
+        ...shippingAddress,
+        state: value,
+        city: '' // Reset city when state changes
+      });
+      return;
+    }
+    
     setShippingAddress({
       ...shippingAddress,
-      [e.target.name]: e.target.value
+      [name]: value
     });
   };
 
@@ -68,7 +101,9 @@ function Checkout() {
         toast.success(`Coupon applied! You saved ₹${response.data.discountAmount}`);
       }
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Invalid coupon code');
+      console.error('Coupon application error:', error);
+      const errorMessage = error.response?.data?.message || 'Invalid coupon code';
+      toast.error(errorMessage);
     } finally {
       setCouponLoading(false);
     }
@@ -80,60 +115,19 @@ function Checkout() {
     toast.success('Coupon removed');
   };
 
-  const loadRazorpayScript = () => {
-    return new Promise((resolve) => {
-      const script = document.createElement('script');
-      script.src = 'https://checkout.razorpay.com/v1/checkout.js';
-      script.onload = () => resolve(true);
-      script.onerror = () => resolve(false);
-      document.body.appendChild(script);
-    });
-  };
-
   const handleRazorpayPayment = async (orderData) => {
-    const res = await loadRazorpayScript();
-    if (!res) {
-      toast.error('Razorpay SDK failed to load');
-      return;
+    try {
+      const response = await api.post('/orders/init-payment', {
+        orderId: orderData.order._id
+      });
+      
+      // Open payment page in new window
+      const paymentWindow = window.open('', '_blank');
+      paymentWindow.document.write(response.data);
+      paymentWindow.document.close();
+    } catch (error) {
+      toast.error('Failed to initialize payment');
     }
-
-    const options = {
-      key: process.env.REACT_APP_RAZORPAY_KEY_ID || 'rzp_test_zC6feLBheTj2fD',
-      amount: orderData.razorpayOrder.amount,
-      currency: orderData.razorpayOrder.currency,
-      name: 'StyleHub',
-      description: `Order #${orderData.order.orderNumber}`,
-      order_id: orderData.razorpayOrder.id,
-      handler: async (response) => {
-        try {
-          const verifyResponse = await api.post('/orders/verify-payment', {
-            razorpay_order_id: response.razorpay_order_id,
-            razorpay_payment_id: response.razorpay_payment_id,
-            razorpay_signature: response.razorpay_signature,
-            orderId: orderData.order._id
-          });
-
-          if (verifyResponse.data.success) {
-            clearCart();
-            toast.success('Payment successful!');
-            navigate(`/orders/${orderData.order._id}`);
-          }
-        } catch (error) {
-          toast.error('Payment verification failed');
-        }
-      },
-      prefill: {
-        name: shippingAddress.fullName,
-        email: user?.email,
-        contact: shippingAddress.phone
-      },
-      theme: {
-        color: '#2563eb'
-      }
-    };
-
-    const paymentObject = new window.Razorpay(options);
-    paymentObject.open();
   };
 
   const handleSubmit = async (e) => {
@@ -275,24 +269,35 @@ function Checkout() {
                     />
                   </div>
                   <div className="form-group">
-                    <label>City *</label>
-                    <input
-                      type="text"
-                      name="city"
-                      value={shippingAddress.city}
-                      onChange={handleInputChange}
-                      required
-                    />
-                  </div>
-                  <div className="form-group">
                     <label>State *</label>
-                    <input
-                      type="text"
+                    <select
                       name="state"
                       value={shippingAddress.state}
                       onChange={handleInputChange}
                       required
-                    />
+                    >
+                      <option value="">Select State</option>
+                      {getStates().map(state => (
+                        <option key={state} value={state}>{state}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="form-group">
+                    <label>City *</label>
+                    <select
+                      name="city"
+                      value={shippingAddress.city}
+                      onChange={handleInputChange}
+                      required
+                      disabled={!shippingAddress.state || citiesLoading}
+                    >
+                      <option value="">
+                        {citiesLoading ? 'Loading cities...' : 'Select City'}
+                      </option>
+                      {availableCities.map(city => (
+                        <option key={city} value={city}>{city}</option>
+                      ))}
+                    </select>
                   </div>
                   <div className="form-group">
                     <label>Pincode *</label>
@@ -301,8 +306,26 @@ function Checkout() {
                       name="pincode"
                       value={shippingAddress.pincode}
                       onChange={handleInputChange}
+                      placeholder="6-digit pincode"
+                      maxLength="6"
+                      pattern="[0-9]{6}"
                       required
                     />
+                    {shippingAddress.pincode && shippingAddress.pincode.length !== 6 && (
+                      <small className="error-text">Pincode must be 6 digits</small>
+                    )}
+                  </div>
+                </div>
+                
+                {/* Shipping Details */}
+                <div className="shipping-details">
+                  <div className="shipping-info">
+                    <FiTruck className="shipping-icon" />
+                    <div className="shipping-text">
+                      <p><strong>Shipping Information:</strong></p>
+                      <p>� Order will be shipped in 2-3 working days</p>
+                      <p>� Delivery can be expected by 5-6 working days</p>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -346,7 +369,11 @@ function Checkout() {
                 </div>
               </div>
 
-              <button type="submit" disabled={loading} className="place-order-btn">
+              <button 
+                type="submit" 
+                disabled={loading} 
+                className="place-order-btn"
+              >
                 {loading ? 'Processing...' : `Place Order - ₹${totalPrice?.toLocaleString() || 0}`}
               </button>
             </form>
@@ -404,7 +431,7 @@ function Checkout() {
                     onClick={handleRemoveCoupon}
                     className="remove-coupon"
                   >
-                    ×
+                    �
                   </button>
                 </div>
               )}

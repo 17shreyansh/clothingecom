@@ -1,8 +1,9 @@
 {
   "name": "clothing-ecommerce-client",
   "version": "1.0.0",
-  "description": "Frontend for clothing e-commerce website",
+  "description": "Frontend for clothing e-commerce website",	
   "private": true,
+  "proxy": "http://localhost:5000",
   "dependencies": {
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.1",

@@ -28,13 +28,18 @@ body {
   --secondary-color: #64748b;
   --accent-color: #f59e0b;
   --success-color: #10b981;
+  --success-light: #d1fae5;
   --error-color: #ef4444;
+  --error-light: #fee2e2;
   --warning-color: #f59e0b;
+  --warning-light: #fef3c7;
   --info-color: #3b82f6;
+  --info-light: #dbeafe;
   
   --text-primary: #1f2937;
   --text-secondary: #6b7280;
   --text-muted: #9ca3af;
+  --text-tertiary: #d1d5db;
   
   --bg-primary: #ffffff;
   --bg-secondary: #f9fafb;

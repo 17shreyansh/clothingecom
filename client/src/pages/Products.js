@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { FiSearch, FiFilter, FiGrid, FiList, FiX, FiChevronDown, FiSliders } from 'react-icons/fi';
+import { FiSearch, FiGrid, FiList, FiX, FiChevronDown, FiSliders } from 'react-icons/fi';
 import api from '../services/api';
 import ProductCard from '../components/ProductCard';
 import { toast } from 'react-toastify';
@@ -8,25 +8,28 @@ import './Products.css';
 
 function Products() {
   const [products, setProducts] = useState([]);
-  const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showFilters, setShowFilters] = useState(false);
   const [viewMode, setViewMode] = useState('grid');
   const [searchParams, setSearchParams] = useSearchParams();
   const [searchInput, setSearchInput] = useState('');
-  const [priceRange, setPriceRange] = useState([0, 10000]);
-  const [selectedFilters, setSelectedFilters] = useState({
+  
+  const [filters, setFilters] = useState({
     categories: [],
+    brands: [],
     sizes: [],
     colors: [],
-    brands: []
+    priceRange: { minPrice: 0, maxPrice: 10000 }
   });
 
-  const [availableFilters, setAvailableFilters] = useState({
+  const [selectedFilters, setSelectedFilters] = useState({
+    categories: [],
+    brands: [],
     sizes: [],
-    colors: [],
-    brands: []
+    colors: []
   });
+
+  const [priceRange, setPriceRange] = useState([0, 10000]);
 
   const sortOptions = [
     { value: 'newest', label: 'Newest First' },
@@ -37,18 +40,44 @@ function Products() {
     { value: 'name', label: 'Name A-Z' }
   ];
 
-  const currentSort = searchParams.get('sort') || 'newest';
+  // Initialize from URL after filters are loaded
+  useEffect(() => {
+    if (filters.categories.length > 0) {
+      const search = searchParams.get('search') || '';
+      const categories = searchParams.get('categories')?.split(',').filter(Boolean) || [];
+      const brands = searchParams.get('brands')?.split(',').filter(Boolean) || [];
+      const sizes = searchParams.get('sizes')?.split(',').filter(Boolean) || [];
+      const colors = searchParams.get('colors')?.split(',').filter(Boolean) || [];
+      const minPrice = parseInt(searchParams.get('minPrice')) || filters.priceRange.minPrice || 0;
+      const maxPrice = parseInt(searchParams.get('maxPrice')) || filters.priceRange.maxPrice || 10000;
+
+      setSearchInput(search);
+      setSelectedFilters({ categories, brands, sizes, colors });
+      setPriceRange([minPrice, maxPrice]);
+    }
+  }, [searchParams, filters]);
+
+  // Fetch data
+  useEffect(() => {
+    fetchFilters();
+  }, []);
 
   useEffect(() => {
-    fetchProducts();
-    fetchCategories();
-    fetchFilterOptions();
-  }, [searchParams]);
+    if (filters.categories.length > 0) {
+      fetchProducts();
+    }
+  }, [searchParams, filters]);
 
-  useEffect(() => {
-    const search = searchParams.get('search') || '';
-    setSearchInput(search);
-  }, [searchParams]);
+  const fetchFilters = async () => {
+    try {
+      const response = await api.get('/products/filters');
+      if (response.data.success) {
+        setFilters(response.data.filters);
+      }
+    } catch (error) {
+      console.error('Error fetching filters:', error);
+    }
+  };
 
   const fetchProducts = async () => {
     try {
@@ -57,7 +86,7 @@ function Products() {
       const response = await api.get('/products', { params });
       
       if (response.data.success) {
-        setProducts(response.data.products);
+        setProducts(response.data.products || []);
       }
     } catch (error) {
       console.error('Error fetching products:', error);
@@ -67,30 +96,7 @@ function Products() {
     }
   };
 
-  const fetchCategories = async () => {
-    try {
-      const response = await api.get('/categories');
-      if (response.data.success) {
-        setCategories(response.data.categories);
-      }
-    } catch (error) {
-      console.error('Error fetching categories:', error);
-    }
-  };
-
-  const fetchFilterOptions = async () => {
-    try {
-      const response = await api.get('/products/filters');
-      if (response.data.success) {
-        setAvailableFilters(response.data.filters);
-        setPriceRange([response.data.filters.priceRange.minPrice, response.data.filters.priceRange.maxPrice]);
-      }
-    } catch (error) {
-      console.error('Error fetching filter options:', error);
-    }
-  };
-
-  const updateSearchParams = useCallback((updates) => {
+  const updateURL = useCallback((updates) => {
     const newParams = new URLSearchParams(searchParams);
     
     Object.entries(updates).forEach(([key, value]) => {
@@ -104,105 +110,51 @@ function Products() {
     setSearchParams(newParams);
   }, [searchParams, setSearchParams]);
 
-  const handleSearch = useCallback((value) => {
-    updateSearchParams({ search: value, page: 1 });
-  }, [updateSearchParams]);
+  const handleSearch = () => {
+    updateURL({ search: searchInput, page: 1 });
+  };
 
-  const handleFilterChange = useCallback((filterType, value, checked) => {
-    setSelectedFilters(prev => {
-      const newFilters = { ...prev };
-      if (checked) {
-        newFilters[filterType] = [...prev[filterType], value];
-      } else {
-        newFilters[filterType] = prev[filterType].filter(item => item !== value);
-      }
-      
-      updateSearchParams({
-        [filterType]: newFilters[filterType].join(','),
-        page: 1
-      });
-      
-      return newFilters;
-    });
-  }, [updateSearchParams]);
+  const handleFilterChange = (type, value, checked) => {
+    const newFilters = { ...selectedFilters };
+    
+    if (checked) {
+      newFilters[type] = [...newFilters[type], value];
+    } else {
+      newFilters[type] = newFilters[type].filter(item => item !== value);
+    }
+    
+    setSelectedFilters(newFilters);
+    updateURL({ [type]: newFilters[type].join(','), page: 1 });
+  };
 
-  const handlePriceChange = useCallback((min, max) => {
-    setPriceRange([min, max]);
-    updateSearchParams({ 
-      minPrice: min > 0 ? min : '',
-      maxPrice: max < 10000 ? max : '',
-      page: 1
+  const handlePriceChange = () => {
+    updateURL({ 
+      minPrice: priceRange[0] > 0 ? priceRange[0] : '',
+      maxPrice: priceRange[1] < 10000 ? priceRange[1] : '',
+      page: 1 
     });
-  }, [updateSearchParams]);
+  };
 
   const clearAllFilters = () => {
     setSearchParams({});
     setSearchInput('');
+    setSelectedFilters({ categories: [], brands: [], sizes: [], colors: [] });
     setPriceRange([0, 10000]);
-    setSelectedFilters({
-      categories: [],
-      sizes: [],
-      colors: [],
-      brands: []
-    });
   };
 
-  const activeFiltersCount = useMemo(() => {
-    let count = 0;
-    if (searchParams.get('search')) count++;
-    if (searchParams.get('category')) count++;
-    if (searchParams.get('minPrice') || searchParams.get('maxPrice')) count++;
-    Object.values(selectedFilters).forEach(arr => count += arr.length);
-    return count;
-  }, [searchParams, selectedFilters]);
-
-  const filteredProducts = useMemo(() => {
-    let filtered = [...products];
-    
-    // Apply sorting
-    switch (currentSort) {
-      case 'price-low':
-        filtered.sort((a, b) => a.price - b.price);
-        break;
-      case 'price-high':
-        filtered.sort((a, b) => b.price - a.price);
-        break;
-      case 'rating':
-        filtered.sort((a, b) => (b.averageRating || 0) - (a.averageRating || 0));
-        break;
-      case 'popular':
-        filtered.sort((a, b) => (b.soldCount || 0) - (a.soldCount || 0));
-        break;
-      case 'name':
-        filtered.sort((a, b) => a.name.localeCompare(b.name));
-        break;
-      default:
-        filtered.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-    }
-    
-    return filtered;
-  }, [products, currentSort]);
+  const activeFiltersCount = 
+    (searchParams.get('search') ? 1 : 0) +
+    (searchParams.get('categories')?.split(',').filter(Boolean).length || 0) +
+    (searchParams.get('brands')?.split(',').filter(Boolean).length || 0) +
+    (searchParams.get('sizes')?.split(',').filter(Boolean).length || 0) +
+    (searchParams.get('colors')?.split(',').filter(Boolean).length || 0) +
+    (searchParams.get('minPrice') || searchParams.get('maxPrice') ? 1 : 0);
 
   if (loading) {
     return (
       <div className="products-page">
         <div className="container">
-          <div className="products-loading">
-            <div className="skeleton-header">
-              <div className="skeleton" style={{ height: '40px', width: '300px' }}></div>
-              <div className="skeleton" style={{ height: '40px', width: '200px' }}></div>
-            </div>
-            <div className="skeleton-content">
-              <div className="skeleton-sidebar">
-                <div className="skeleton" style={{ height: '400px' }}></div>
-              </div>
-              <div className="skeleton-grid">
-                {[...Array(8)].map((_, i) => (
-                  <div key={i} className="skeleton product-skeleton"></div>
-                ))}
-              </div>
-            </div>
-          </div>
+          <div className="products-loading">Loading...</div>
         </div>
       </div>
     );
@@ -211,99 +163,57 @@ function Products() {
   return (
     <div className="products-page">
       <div className="container">
-        {/* Search Bar */}
+        {/* Search */}
         <div className="search-section">
           <div className="search-bar">
             <FiSearch className="search-icon" />
             <input
               type="text"
-              placeholder="Search products, brands, categories..."
+              placeholder="Search products..."
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && handleSearch(searchInput)}
-              className="search-input"
+              onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
             />
-            {searchInput && (
-              <button 
-                onClick={() => {
-                  setSearchInput('');
-                  handleSearch('');
-                }}
-                className="search-clear"
-              >
-                <FiX />
-              </button>
-            )}
-            <button 
-              onClick={() => handleSearch(searchInput)}
-              className="search-btn"
-            >
-              Search
-            </button>
+            <button onClick={handleSearch}>Search</button>
           </div>
         </div>
 
-        {/* Breadcrumb & Header */}
+        {/* Header */}
         <div className="products-header">
           <div className="header-left">
-            <nav className="breadcrumb">
-              <span>Home</span>
-              <span>/</span>
-              <span>Products</span>
-              {searchParams.get('category') && (
-                <>
-                  <span>/</span>
-                  <span>{searchParams.get('category')}</span>
-                </>
-              )}
-            </nav>
-            <h1>
-              {searchParams.get('search') ? `Search: "${searchParams.get('search')}"` : 
-               searchParams.get('category') ? `${searchParams.get('category')} Collection` : 'All Products'}
-            </h1>
-            <p className="results-count">{filteredProducts.length} products found</p>
+            <h1>Products</h1>
+            <p>{products.length} products found</p>
           </div>
           
           <div className="header-controls">
             <div className="view-toggle">
               <button
-                className={`view-btn ${viewMode === 'grid' ? 'active' : ''}`}
+                className={viewMode === 'grid' ? 'active' : ''}
                 onClick={() => setViewMode('grid')}
               >
                 <FiGrid />
               </button>
               <button
-                className={`view-btn ${viewMode === 'list' ? 'active' : ''}`}
+                className={viewMode === 'list' ? 'active' : ''}
                 onClick={() => setViewMode('list')}
               >
                 <FiList />
               </button>
             </div>
             
-            <div className="sort-dropdown">
-              <select
-                value={currentSort}
-                onChange={(e) => updateSearchParams({ sort: e.target.value })}
-                className="sort-select"
-              >
-                {sortOptions.map(option => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-              <FiChevronDown className="dropdown-icon" />
-            </div>
-
-            <button
-              className="filters-toggle"
-              onClick={() => setShowFilters(!showFilters)}
+            <select
+              value={searchParams.get('sort') || 'newest'}
+              onChange={(e) => updateURL({ sort: e.target.value })}
             >
-              <FiSliders />
-              Filters
-              {activeFiltersCount > 0 && (
-                <span className="filter-count">{activeFiltersCount}</span>
-              )}
+              {sortOptions.map(option => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+
+            <button onClick={() => setShowFilters(!showFilters)}>
+              <FiSliders /> Filters {activeFiltersCount > 0 && `(${activeFiltersCount})`}
             </button>
           </div>
         </div>
@@ -315,44 +225,34 @@ function Products() {
               {searchParams.get('search') && (
                 <span className="filter-tag">
                   Search: {searchParams.get('search')}
-                  <button onClick={() => handleSearch('')}>
+                  <button onClick={() => updateURL({ search: '' })}>
                     <FiX />
                   </button>
                 </span>
               )}
-              {searchParams.get('category') && (
-                <span className="filter-tag">
-                  Category: {searchParams.get('category')}
-                  <button onClick={() => updateSearchParams({ category: '' })}>
+              
+              {searchParams.get('categories')?.split(',').filter(Boolean).map(cat => (
+                <span key={cat} className="filter-tag">
+                  {cat}
+                  <button onClick={() => {
+                    const cats = searchParams.get('categories').split(',').filter(c => c !== cat);
+                    updateURL({ categories: cats.join(',') });
+                  }}>
                     <FiX />
                   </button>
                 </span>
-              )}
-              {(searchParams.get('minPrice') || searchParams.get('maxPrice')) && (
-                <span className="filter-tag">
-                  Price: ₹{searchParams.get('minPrice') || 0} - ₹{searchParams.get('maxPrice') || '10000+'}
-                  <button onClick={() => handlePriceChange(0, 10000)}>
-                    <FiX />
-                  </button>
-                </span>
-              )}
+              ))}
             </div>
-            <button onClick={clearAllFilters} className="clear-all-btn">
-              Clear All
-            </button>
+            <button onClick={clearAllFilters}>Clear All</button>
           </div>
         )}
 
-        {/* Main Content */}
         <div className="products-content">
-          {/* Filters Sidebar */}
+          {/* Sidebar */}
           <div className={`filters-sidebar ${showFilters ? 'open' : ''}`}>
             <div className="filters-header">
               <h3>Filters</h3>
-              <button 
-                onClick={() => setShowFilters(false)}
-                className="close-filters"
-              >
+              <button onClick={() => setShowFilters(false)}>
                 <FiX />
               </button>
             </div>
@@ -361,50 +261,59 @@ function Products() {
               {/* Categories */}
               <div className="filter-group">
                 <h4>Categories</h4>
-                <div className="filter-options">
-                  {availableFilters.categories?.map(category => (
-                    <label key={category._id} className="filter-option">
-                      <input
-                        type="checkbox"
-                        checked={selectedFilters.categories.includes(category.name)}
-                        onChange={(e) => handleFilterChange('categories', category.name, e.target.checked)}
-                      />
-                      <span>{category.name}</span>
-                      <span className="count">({category.productCount || 0})</span>
-                    </label>
-                  ))}
-                </div>
+                {filters.categories?.map(category => (
+                  <label key={category._id} className="filter-option">
+                    <input
+                      type="checkbox"
+                      checked={selectedFilters.categories.includes(category.slug)}
+                      onChange={(e) => handleFilterChange('categories', category.slug, e.target.checked)}
+                    />
+                    <span>{category.name}</span>
+                  </label>
+                ))}
               </div>
 
               {/* Price Range */}
               <div className="filter-group">
                 <h4>Price Range</h4>
-                <div className="price-range">
-                  <div className="price-inputs">
-                    <input
-                      type="number"
-                      placeholder="Min"
-                      value={priceRange[0]}
-                      onChange={(e) => setPriceRange([parseInt(e.target.value) || 0, priceRange[1]])}
-                      onBlur={() => handlePriceChange(priceRange[0], priceRange[1])}
-                    />
-                    <span>to</span>
-                    <input
-                      type="number"
-                      placeholder="Max"
-                      value={priceRange[1]}
-                      onChange={(e) => setPriceRange([priceRange[0], parseInt(e.target.value) || 10000])}
-                      onBlur={() => handlePriceChange(priceRange[0], priceRange[1])}
-                    />
-                  </div>
+                <div className="price-inputs">
+                  <input
+                    type="number"
+                    placeholder="Min"
+                    value={priceRange[0]}
+                    onChange={(e) => setPriceRange([parseInt(e.target.value) || 0, priceRange[1]])}
+                    onBlur={handlePriceChange}
+                  />
+                  <input
+                    type="number"
+                    placeholder="Max"
+                    value={priceRange[1]}
+                    onChange={(e) => setPriceRange([priceRange[0], parseInt(e.target.value) || 10000])}
+                    onBlur={handlePriceChange}
+                  />
                 </div>
+              </div>
+
+              {/* Brands */}
+              <div className="filter-group">
+                <h4>Brands</h4>
+                {filters.brands?.map(brand => (
+                  <label key={brand} className="filter-option">
+                    <input
+                      type="checkbox"
+                      checked={selectedFilters.brands.includes(brand)}
+                      onChange={(e) => handleFilterChange('brands', brand, e.target.checked)}
+                    />
+                    <span>{brand}</span>
+                  </label>
+                ))}
               </div>
 
               {/* Sizes */}
               <div className="filter-group">
                 <h4>Sizes</h4>
                 <div className="filter-chips">
-                  {availableFilters.sizes.map(size => (
+                  {filters.sizes?.map(size => (
                     <label key={size} className="filter-chip">
                       <input
                         type="checkbox"
@@ -421,87 +330,42 @@ function Products() {
               <div className="filter-group">
                 <h4>Colors</h4>
                 <div className="color-filters">
-                  {availableFilters.colors.map(color => (
+                  {filters.colors?.map(color => (
                     <label key={color} className="color-option">
                       <input
                         type="checkbox"
                         checked={selectedFilters.colors.includes(color)}
                         onChange={(e) => handleFilterChange('colors', color, e.target.checked)}
                       />
-                      <span 
-                        className="color-swatch"
-                        style={{ backgroundColor: color.toLowerCase() }}
-                      ></span>
+                      <span className="color-swatch" style={{ backgroundColor: color.toLowerCase() }}></span>
                       <span>{color}</span>
                     </label>
                   ))}
                 </div>
               </div>
-
-              {/* Brands */}
-              <div className="filter-group">
-                <h4>Brands</h4>
-                <div className="filter-options">
-                  {availableFilters.brands.map(brand => (
-                    <label key={brand} className="filter-option">
-                      <input
-                        type="checkbox"
-                        checked={selectedFilters.brands.includes(brand)}
-                        onChange={(e) => handleFilterChange('brands', brand, e.target.checked)}
-                      />
-                      <span>{brand}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            <div className="filters-footer">
-              <button onClick={clearAllFilters} className="btn btn-outline">
-                Clear All
-              </button>
-              <button 
-                onClick={() => setShowFilters(false)}
-                className="btn btn-primary"
-              >
-                Apply Filters
-              </button>
             </div>
           </div>
 
           {/* Products Grid */}
           <div className="products-main">
-            {filteredProducts.length > 0 ? (
+            {products.length > 0 ? (
               <div className={`products-${viewMode}`}>
-                {filteredProducts.map(product => (
-                  <ProductCard 
-                    key={product._id} 
-                    product={product} 
-                    viewMode={viewMode}
-                  />
+                {products.map(product => (
+                  <ProductCard key={product._id} product={product} viewMode={viewMode} />
                 ))}
               </div>
             ) : (
               <div className="no-products">
-                <div className="no-products-icon">
-                  <FiSearch />
-                </div>
                 <h3>No products found</h3>
-                <p>Try adjusting your search terms or filters</p>
-                <button onClick={clearAllFilters} className="btn btn-primary">
-                  Clear All Filters
-                </button>
+                <p>Try adjusting your filters</p>
+                <button onClick={clearAllFilters}>Clear All Filters</button>
               </div>
             )}
           </div>
         </div>
 
-        {/* Filters Overlay */}
         {showFilters && (
-          <div 
-            className="filters-overlay"
-            onClick={() => setShowFilters(false)}
-          ></div>
+          <div className="filters-overlay" onClick={() => setShowFilters(false)}></div>
         )}
       </div>
     </div>

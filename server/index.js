@@ -6,11 +6,13 @@ const cookieParser = require('cookie-parser');
 const path = require('path');
 require('dotenv').config();
 
-// Connect to MongoDB
 const mongoose = require('mongoose');
 const connectDB = async () => {
   try {
-    const conn = await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/clothing-ecommerce');
+    const conn = await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/clothing-ecommerce', {
+      useNewUrlParser: true,
+      useUnifiedTopology: true,
+    });
     console.log(`MongoDB connected: ${conn.connection.host}`);
     return conn;
   } catch (error) {
@@ -18,10 +20,11 @@ const connectDB = async () => {
     process.exit(1);
   }
 };
+
 const errorHandler = require('./middleware/errorHandler');
 const HomepageContent = require('./models/HomepageContent');
 
-// Route imports
+// Routes
 const authRoutes = require('./routes/auth');
 const userRoutes = require('./routes/users');
 const productRoutes = require('./routes/products');
@@ -34,12 +37,15 @@ const emailConfigRoutes = require('./routes/emailConfig');
 const contactRoutes = require('./routes/contact');
 const packingTimeRoutes = require('./routes/packingTime');
 const analyticsRoutes = require('./routes/analytics');
+const notificationRoutes = require('./routes/notifications');
 
 const app = express();
 
-// Connect to database and initialize content
+// Trust proxy to correctly handle secure cookies and client IPs behind NGINX
+app.set('trust proxy', 1);
+
+// Connect to MongoDB and initialize homepage content
 connectDB().then(() => {
-  // Initialize homepage content after database connection
   setTimeout(() => {
     HomepageContent.createDefaultContent().catch(err => {
       console.error('Error creating default homepage content:', err);
@@ -49,41 +55,62 @@ connectDB().then(() => {
   console.error('Database connection failed:', err);
 });
 
-// Security middleware
+// Security middlewares
 app.use(helmet({
-  crossOriginResourcePolicy: { policy: "cross-origin" }
+  crossOriginResourcePolicy: { policy: "cross-origin" },
 }));
 
-// Rate limiting
+// Rate limiting for API (enable as needed)
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // limit each IP to 100 requests per windowMs
+  windowMs: 15 * 60 * 1000,
+  max: 100,
   message: 'Too many requests from this IP, please try again later.'
 });
 // app.use('/api/', limiter);
 
-// CORS configuration - Allow all origins in production
+// CORS configuration with explicit allowed origins
+const allowedOrigins = [
+  'https://bhuvicreations.com',
+  'https://www.bhuvicreations.com',
+  'http://localhost:3000',
+];
 app.use(cors({
-  origin: "https://clothingecom.vercel.app",
+  origin: function (origin, callback) {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'Cookie']
+  allowedHeaders: ['Content-Type', 'Authorization', 'Cookie'],
 }));
 
-// Body parsing middleware
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+// Body parsing middlewares
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 app.use(cookieParser());
 
+// Serve uploaded files statically
 // Static files
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-// Health check route
+// Add CORS for uploads
+app.use('/uploads', (req, res, next) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'GET');
+  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
+  next();
+});
+	
+
+// Health check endpoint
 app.get('/api/health', (req, res) => {
   res.status(200).json({
     success: true,
     message: 'Server is running',
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
   });
 });
 
@@ -94,46 +121,38 @@ app.use('/api/products', productRoutes);
 app.use('/api/categories', categoryRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/payments', paymentRoutes);
-// These routes share the same base path '/api/admin' but handle different endpoints:
-// adminRoutes handles general admin functionality
-// analyticsRoutes specifically handles analytics-related admin endpoints
-// They can coexist since Express matches routes in order and each route file defines unique sub-paths
 app.use('/api/admin', adminRoutes);
-app.use('/api/admin', analyticsRoutes); // Analytics routes under admin namespace
+app.use('/api/admin', analyticsRoutes);
 app.use('/api/homepage', homepageContentRoutes);
 app.use('/api/email-config', emailConfigRoutes);
 app.use('/api/contact', contactRoutes);
 app.use('/api/packing-time', packingTimeRoutes);
+app.use('/api/notifications', notificationRoutes);
 
-
-// 404 handler
+// 404 handler for unknown routes
 app.use('*', (req, res) => {
   res.status(404).json({
     success: false,
-    message: 'Route not found'
+    message: 'Route not found',
   });
 });
 
-// Error handling middleware
+// Centralized error handler middleware
 app.use(errorHandler);
 
 const PORT = process.env.PORT || 5000;
-
 const server = app.listen(PORT, () => {
-  console.log(`Server running in ${process.env.NODE_ENV} mode on port ${PORT}`);
+  console.log(`Server running in ${process.env.NODE_ENV || 'development'} mode on port ${PORT}`);
 });
 
-// Handle unhandled promise rejections
+// Graceful shutdown handling
 process.on('unhandledRejection', (err, promise) => {
-  console.log(`Error: ${err.message}`);
-  server.close(() => {
-    process.exit(1);
-  });
+  console.error(`Unhandled Rejection: ${err.message}`);
+  server.close(() => process.exit(1));
 });
 
-// Handle uncaught exceptions
 process.on('uncaughtException', (err) => {
-  console.log(`Error: ${err.message}`);
+  console.error(`Uncaught Exception: ${err.message}`);
   process.exit(1);
 });
 

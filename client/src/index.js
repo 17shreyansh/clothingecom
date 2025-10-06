@@ -5,6 +5,8 @@ import { ToastContainer } from 'react-toastify';
 import App from './App';
 import { AuthProvider } from './context/AuthContext';
 import { CartProvider } from './context/CartContext';
+import { LocationProvider } from './context/LocationContext';
+import { NotificationProvider } from './context/NotificationContext';
 import './styles/index.css';
 import './styles/global.css';
 import 'react-toastify/dist/ReactToastify.css';
@@ -14,21 +16,25 @@ root.render(
   <React.StrictMode>
     <BrowserRouter>
       <AuthProvider>
-        <CartProvider>
-          <App />
-          <ToastContainer
-            position="top-right"
-            autoClose={3000}
-            hideProgressBar={false}
-            newestOnTop={false}
-            closeOnClick
-            rtl={false}
-            pauseOnFocusLoss
-            draggable
-            pauseOnHover
-            theme="light"
-          />
-        </CartProvider>
+        <NotificationProvider>
+          <CartProvider>
+            <LocationProvider>
+              <App />
+              <ToastContainer
+                position="top-right"
+                autoClose={3000}
+                hideProgressBar={false}
+                newestOnTop={false}
+                closeOnClick
+                rtl={false}
+                pauseOnFocusLoss
+                draggable
+                pauseOnHover
+                theme="light"
+              />
+            </LocationProvider>
+          </CartProvider>
+        </NotificationProvider>
       </AuthProvider>
     </BrowserRouter>
   </React.StrictMode>

@@ -82,10 +82,7 @@ const orderSchema = new mongoose.Schema({
     required: true,
     min: 0
   },
-  discountCode: {
-    code: String,
-    discountAmount: Number
-  },
+  discountCode: String,
   orderStatus: {
     type: String,
     enum: ['pending', 'confirmed', 'packed', 'shipped', 'delivered', 'cancelled', 'returned'],
@@ -122,6 +119,37 @@ orderSchema.pre('save', async function(next) {
     this.orderNumber = `ORD${Date.now()}${String(count + 1).padStart(4, '0')}`;
   }
   this.updatedAt = Date.now();
+  next();
+});
+
+// Create notification for new orders
+orderSchema.post('save', async function(doc, next) {
+  if (this.wasNew) {
+    try {
+      const Notification = require('./Notification');
+      await Notification.create({
+        type: 'order',
+        title: 'New Order Received',
+        message: `New order #${doc.orderNumber} for ₹${doc.totalPrice} has been placed`,
+        relatedId: doc._id,
+        relatedModel: 'Order',
+        priority: 'high',
+        data: {
+          orderNumber: doc.orderNumber,
+          totalPrice: doc.totalPrice,
+          customerName: doc.shippingAddress?.fullName
+        }
+      });
+    } catch (error) {
+      console.error('Error creating order notification:', error);
+    }
+  }
+  next();
+});
+
+// Track if document is new
+orderSchema.pre('save', function(next) {
+  this.wasNew = this.isNew;
   next();
 });
 
