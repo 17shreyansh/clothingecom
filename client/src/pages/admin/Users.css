@@ -8,6 +8,63 @@
   justify-content: space-between;
   align-items: flex-start;
   margin-bottom: 2rem;
+  gap: 2rem;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 2rem;
+}
+
+.create-user-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  background-color: var(--primary-color);
+  color: white;
+  border: none;
+  border-radius: var(--radius-lg);
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.create-user-btn:hover {
+  background-color: var(--primary-dark);
+  transform: translateY(-1px);
+}
+
+.users-stats {
+  display: flex;
+  gap: 1rem;
+}
+
+.stat-card {
+  background-color: var(--bg-primary);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-lg);
+  padding: 1rem;
+  text-align: center;
+  min-width: 80px;
+}
+
+.stat-number {
+  display: block;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--primary-color);
+  margin-bottom: 0.25rem;
+}
+
+.stat-label {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.025em;
 }
 
 .users-header h1 {
@@ -178,12 +235,21 @@
   cursor: pointer;
 }
 
+.status-badges {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
 .status-badge {
   padding: 0.25rem 0.5rem;
   border-radius: var(--radius-sm);
   font-size: 0.75rem;
   font-weight: 600;
   text-transform: capitalize;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
 }
 
 .status-badge.active {
@@ -191,9 +257,35 @@
   color: var(--success-color);
 }
 
+.status-badge.active:hover {
+  background-color: rgba(16, 185, 129, 0.2);
+}
+
 .status-badge.inactive {
   background-color: rgba(239, 68, 68, 0.1);
   color: var(--error-color);
+}
+
+.status-badge.inactive:hover {
+  background-color: rgba(239, 68, 68, 0.2);
+}
+
+.status-badge.banned {
+  background-color: rgba(239, 68, 68, 0.2);
+  color: var(--error-color);
+  cursor: not-allowed;
+}
+
+.ban-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  background-color: rgba(239, 68, 68, 0.1);
+  color: var(--error-color);
+  border-radius: 50%;
+  font-size: 0.75rem;
 }
 
 .date-cell {
@@ -278,6 +370,22 @@
   background-color: rgba(239, 68, 68, 0.1);
 }
 
+.actions-menu button.ban-action {
+  color: var(--warning-color, #f59e0b);
+}
+
+.actions-menu button.ban-action:hover {
+  background-color: rgba(245, 158, 11, 0.1);
+}
+
+.actions-menu button.unban-action {
+  color: var(--success-color);
+}
+
+.actions-menu button.unban-action:hover {
+  background-color: rgba(16, 185, 129, 0.1);
+}
+
 .actions-menu button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
@@ -289,6 +397,15 @@
     flex-direction: column;
     gap: 1rem;
     align-items: stretch;
+  }
+  
+  .users-stats {
+    justify-content: space-between;
+  }
+  
+  .stat-card {
+    flex: 1;
+    min-width: 0;
   }
 
   .users-filters {
@@ -337,7 +454,7 @@
     color: var(--text-secondary);
   }
 
-  .status-badge::before {
+  .status-badges::before {
     content: 'Status:';
     font-weight: 600;
     color: var(--text-secondary);
@@ -352,5 +469,402 @@
   .actions-cell {
     order: 2;
     justify-content: flex-end;
+  }
+}
+
+/* Modal Styles */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 1rem;
+}
+
+.modal-content {
+  background-color: var(--bg-primary);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-xl);
+  width: 100%;
+  max-width: 500px;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.modal-content.large-modal {
+  max-width: 700px;
+}
+
+/* User Detail View */
+.user-detail-view {
+  padding: 1.5rem;
+}
+
+.user-detail-header {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid var(--border-light);
+}
+
+.user-avatar-large {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background-color: var(--primary-light);
+  color: var(--primary-dark);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+  flex-shrink: 0;
+}
+
+.user-basic-info h2 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 0.5rem;
+}
+
+.user-basic-info p {
+  color: var(--text-secondary);
+  margin-bottom: 1rem;
+}
+
+.user-badges {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.badge {
+  padding: 0.25rem 0.5rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+.badge.admin {
+  background-color: rgba(147, 51, 234, 0.1);
+  color: #7c3aed;
+}
+
+.badge.user {
+  background-color: rgba(59, 130, 246, 0.1);
+  color: #3b82f6;
+}
+
+.badge.active {
+  background-color: rgba(16, 185, 129, 0.1);
+  color: var(--success-color);
+}
+
+.badge.inactive {
+  background-color: rgba(239, 68, 68, 0.1);
+  color: var(--error-color);
+}
+
+.badge.banned {
+  background-color: rgba(239, 68, 68, 0.2);
+  color: var(--error-color);
+}
+
+.badge.verified {
+  background-color: rgba(16, 185, 129, 0.1);
+  color: var(--success-color);
+}
+
+.detail-section {
+  margin-bottom: 2rem;
+}
+
+.detail-section h3 {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 1rem;
+}
+
+.detail-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1rem;
+}
+
+.detail-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.detail-item label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.detail-item span {
+  font-size: 0.875rem;
+  color: var(--text-primary);
+  word-break: break-all;
+}
+
+.ban-info {
+  background-color: rgba(239, 68, 68, 0.05);
+  padding: 1.5rem;
+  border-radius: var(--radius-lg);
+  border-left: 4px solid var(--error-color);
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.5rem;
+  border-bottom: 1px solid var(--border-light);
+}
+
+.modal-header h3 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.close-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: none;
+  background-color: var(--bg-secondary);
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  transition: all 0.2s ease;
+}
+
+.close-btn:hover {
+  background-color: var(--bg-tertiary);
+  color: var(--text-primary);
+}
+
+/* User Forms */
+.user-form {
+  padding: 1.5rem;
+}
+
+.ban-user-form,
+.password-reset-form {
+  padding: 1.5rem;
+}
+
+.ban-warning,
+.reset-warning {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 1rem;
+  background-color: rgba(239, 68, 68, 0.1);
+  border-radius: var(--radius-lg);
+  margin-bottom: 1.5rem;
+}
+
+.warning-icon {
+  font-size: 2rem;
+  color: var(--error-color);
+  margin-bottom: 0.5rem;
+}
+
+.ban-warning p,
+.reset-warning p {
+  margin: 0.25rem 0;
+  color: var(--text-primary);
+}
+
+.ban-btn {
+  background-color: var(--error-color);
+  color: white;
+  padding: 0.75rem 1.5rem;
+  border-radius: var(--radius-lg);
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: none;
+}
+
+.ban-btn:hover {
+  background-color: #dc2626;
+}
+
+.delete-btn {
+  background-color: var(--error-color);
+  color: white;
+  padding: 0.75rem 1.5rem;
+  border-radius: var(--radius-lg);
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: none;
+}
+
+.delete-btn:hover {
+  background-color: #dc2626;
+}
+
+.warning-text {
+  color: var(--error-color);
+  font-size: 0.875rem;
+  margin-top: 0.5rem;
+}
+
+.modal-body {
+  padding: 1.5rem;
+}
+
+.modal-body p {
+  margin-bottom: 1rem;
+  color: var(--text-primary);
+}
+
+.form-group {
+  margin-bottom: 1.5rem;
+}
+
+.form-group label {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 0.5rem;
+}
+
+.form-group input,
+.form-group select {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  font-size: 0.875rem;
+  transition: all 0.2s ease;
+}
+
+.form-group input:focus,
+.form-group select:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.checkbox-group {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.checkbox-group label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0;
+  cursor: pointer;
+}
+
+.checkbox-group input[type="checkbox"] {
+  width: auto;
+  margin: 0;
+}
+
+.form-actions {
+  display: flex;
+  gap: 1rem;
+  justify-content: flex-end;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border-light);
+}
+
+.cancel-btn,
+.submit-btn {
+  padding: 0.75rem 1.5rem;
+  border-radius: var(--radius-lg);
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: none;
+}
+
+.cancel-btn {
+  background-color: var(--bg-secondary);
+  color: var(--text-secondary);
+}
+
+.cancel-btn:hover {
+  background-color: var(--bg-tertiary);
+  color: var(--text-primary);
+}
+
+.submit-btn {
+  background-color: var(--primary-color);
+  color: white;
+}
+
+.submit-btn:hover {
+  background-color: var(--primary-dark);
+}
+
+@media (max-width: 768px) {
+  .modal-content {
+    margin: 0;
+    border-radius: 0;
+    height: 100vh;
+    max-height: none;
+  }
+  
+  .form-actions {
+    flex-direction: column;
+  }
+  
+  .cancel-btn,
+  .submit-btn,
+  .ban-btn,
+  .delete-btn {
+    width: 100%;
+  }
+  
+  .header-actions {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 1rem;
+  }
+  
+  .users-stats {
+    order: -1;
+  }
+  
+  .detail-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .user-detail-header {
+    flex-direction: column;
+    text-align: center;
   }
 }

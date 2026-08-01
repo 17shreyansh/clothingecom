@@ -52,19 +52,19 @@ function Home() {
         <div className="container">
           <h2 className="section-title">Shop by Category</h2>
           <div className="categories-grid">
-            <Link to="/products?category=men" className="category-card">
+            <Link to="/products?categories=men" className="category-card">
               <div className="category-image">
                 <img src="/api/placeholder/300/400" alt="Men's Fashion" />
               </div>
               <h3>Men's Fashion</h3>
             </Link>
-            <Link to="/products?category=women" className="category-card">
+            <Link to="/products?categories=women" className="category-card">
               <div className="category-image">
                 <img src="/api/placeholder/300/400" alt="Women's Fashion" />
               </div>
               <h3>Women's Fashion</h3>
             </Link>
-            <Link to="/products?category=accessories" className="category-card">
+            <Link to="/products?categories=accessories" className="category-card">
               <div className="category-image">
                 <img src="/api/placeholder/300/400" alt="Accessories" />
               </div>

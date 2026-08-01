@@ -145,14 +145,7 @@ const PriceSlider = styled(Slider)`
   }
 `;
 
-const categories = [
-  'All',
-  'Sarees',
-  'Kurties', 
-  'Lehengas',
-  'Suits',
-  'Accessories'
-];
+
 
 const colors = [
   'Red', 'Blue', 'Green', 'Yellow', 'Pink', 'Purple', 'Orange', 'Black', 'White', 'Multicolor'
@@ -177,6 +170,15 @@ function ModernProducts() {
   const [viewMode, setViewMode] = useState('grid');
   const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
   
+  // Filter options from API
+  const [filterOptions, setFilterOptions] = useState({
+    categories: [],
+    brands: [],
+    sizes: [],
+    colors: [],
+    priceRange: { minPrice: 0, maxPrice: 10000 }
+  });
+  
   // Filter states
   const [searchQuery, setSearchQuery] = useState(searchParams.get('search') || '');
   const [selectedCategory, setSelectedCategory] = useState(searchParams.get('category') || 'All');
@@ -192,24 +194,74 @@ function ModernProducts() {
   const productsPerPage = 12;
 
   useEffect(() => {
-    fetchProducts();
-  }, [searchParams, currentPage, sortBy]);
+    fetchFilterOptions();
+  }, []);
 
   useEffect(() => {
-    // Update URL params when filters change
+    if (filterOptions.categories.length > 0) {
+      initializeFiltersFromURL();
+      fetchProducts();
+    }
+  }, [searchParams, filterOptions]);
+
+  useEffect(() => {
+    if (filterOptions.categories.length > 0) {
+      fetchProducts();
+    }
+  }, [currentPage, sortBy, searchQuery, selectedCategory, selectedColors, selectedSizes, priceRange]);
+
+  const fetchFilterOptions = async () => {
+    try {
+      const response = await api.get('/products/filters');
+      if (response.data.success) {
+        setFilterOptions(response.data.filters);
+      }
+    } catch (error) {
+      console.error('Error fetching filter options:', error);
+    }
+  };
+
+  const initializeFiltersFromURL = () => {
+    const search = searchParams.get('search') || '';
+    const category = searchParams.get('category') || 'All';
+    const colors = searchParams.get('colors')?.split(',').filter(Boolean) || [];
+    const sizes = searchParams.get('sizes')?.split(',').filter(Boolean) || [];
+    const minPrice = parseInt(searchParams.get('minPrice')) || filterOptions.priceRange.minPrice;
+    const maxPrice = parseInt(searchParams.get('maxPrice')) || filterOptions.priceRange.maxPrice;
+    const sort = searchParams.get('sort') || 'newest';
+    const page = parseInt(searchParams.get('page')) || 1;
+
+    setSearchQuery(search);
+    setSelectedCategory(category);
+    setSelectedColors(colors);
+    setSelectedSizes(sizes);
+    setPriceRange([minPrice, maxPrice]);
+    setSortBy(sort);
+    setCurrentPage(page);
+  };
+
+  const updateURL = () => {
     const params = new URLSearchParams();
     if (searchQuery) params.set('search', searchQuery);
     if (selectedCategory !== 'All') params.set('category', selectedCategory);
     if (selectedColors.length) params.set('colors', selectedColors.join(','));
     if (selectedSizes.length) params.set('sizes', selectedSizes.join(','));
-    if (priceRange[0] > 0 || priceRange[1] < 10000) {
-      params.set('minPrice', priceRange[0].toString());
-      params.set('maxPrice', priceRange[1].toString());
+    if (filterOptions.priceRange.minPrice !== undefined && filterOptions.priceRange.maxPrice !== undefined) {
+      if (priceRange[0] > filterOptions.priceRange.minPrice || priceRange[1] < filterOptions.priceRange.maxPrice) {
+        params.set('minPrice', priceRange[0].toString());
+        params.set('maxPrice', priceRange[1].toString());
+      }
     }
     if (sortBy !== 'newest') params.set('sort', sortBy);
     if (currentPage > 1) params.set('page', currentPage.toString());
     
     setSearchParams(params);
+  };
+
+  useEffect(() => {
+    if (filterOptions.categories.length > 0) {
+      updateURL();
+    }
   }, [searchQuery, selectedCategory, selectedColors, selectedSizes, priceRange, sortBy, currentPage]);
 
   const fetchProducts = async () => {
@@ -220,11 +272,11 @@ function ModernProducts() {
         limit: productsPerPage,
         sort: sortBy,
         ...(searchQuery && { search: searchQuery }),
-        ...(selectedCategory !== 'All' && { category: selectedCategory }),
+        ...(selectedCategory !== 'All' && { categories: selectedCategory }),
         ...(selectedColors.length && { colors: selectedColors.join(',') }),
         ...(selectedSizes.length && { sizes: selectedSizes.join(',') }),
-        ...(priceRange[0] > 0 && { minPrice: priceRange[0] }),
-        ...(priceRange[1] < 10000 && { maxPrice: priceRange[1] })
+        ...(filterOptions.priceRange.minPrice !== undefined && priceRange[0] > filterOptions.priceRange.minPrice && { minPrice: priceRange[0] }),
+        ...(filterOptions.priceRange.maxPrice !== undefined && priceRange[1] < filterOptions.priceRange.maxPrice && { maxPrice: priceRange[1] })
       };
 
       const response = await api.get('/products', { params });
@@ -261,12 +313,24 @@ function ModernProducts() {
     setCurrentPage(1);
   };
 
+  const handleSearchChange = (query) => {
+    setSearchQuery(query);
+    setCurrentPage(1);
+  };
+
+  const handlePriceChange = (newRange) => {
+    setPriceRange(newRange);
+    setCurrentPage(1);
+  };
+
   const clearFilters = () => {
     setSearchQuery('');
     setSelectedCategory('All');
     setSelectedColors([]);
     setSelectedSizes([]);
-    setPriceRange([0, 10000]);
+    if (filterOptions.priceRange.minPrice !== undefined && filterOptions.priceRange.maxPrice !== undefined) {
+      setPriceRange([filterOptions.priceRange.minPrice, filterOptions.priceRange.maxPrice]);
+    }
     setSortBy('newest');
     setCurrentPage(1);
   };
@@ -277,7 +341,8 @@ function ModernProducts() {
     if (selectedCategory !== 'All') count++;
     if (selectedColors.length) count++;
     if (selectedSizes.length) count++;
-    if (priceRange[0] > 0 || priceRange[1] < 10000) count++;
+    if (filterOptions.priceRange.minPrice !== undefined && filterOptions.priceRange.maxPrice !== undefined && 
+        (priceRange[0] > filterOptions.priceRange.minPrice || priceRange[1] < filterOptions.priceRange.maxPrice)) count++;
     return count;
   }, [searchQuery, selectedCategory, selectedColors, selectedSizes, priceRange]);
 
@@ -301,7 +366,7 @@ function ModernProducts() {
           size="small"
           placeholder="Search products..."
           value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
+          onChange={(e) => handleSearchChange(e.target.value)}
           InputProps={{
             startAdornment: (
               <InputAdornment position="start">
@@ -321,20 +386,33 @@ function ModernProducts() {
         </AccordionSummary>
         <AccordionDetails>
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-            {categories.map((category) => (
+            <Button
+              variant={selectedCategory === 'All' ? 'contained' : 'text'}
+              onClick={() => handleCategoryChange('All')}
+              sx={{
+                justifyContent: 'flex-start',
+                textTransform: 'none',
+                ...(selectedCategory === 'All' && {
+                  background: 'linear-gradient(135deg, #D4AF37 0%, #B8941F 100%)',
+                }),
+              }}
+            >
+              All Categories
+            </Button>
+            {filterOptions.categories.map((category) => (
               <Button
-                key={category}
-                variant={selectedCategory === category ? 'contained' : 'text'}
-                onClick={() => handleCategoryChange(category)}
+                key={category._id}
+                variant={selectedCategory === category.slug ? 'contained' : 'text'}
+                onClick={() => handleCategoryChange(category.slug)}
                 sx={{
                   justifyContent: 'flex-start',
                   textTransform: 'none',
-                  ...(selectedCategory === category && {
+                  ...(selectedCategory === category.slug && {
                     background: 'linear-gradient(135deg, #D4AF37 0%, #B8941F 100%)',
                   }),
                 }}
               >
-                {category}
+                {category.name}
               </Button>
             ))}
           </Box>
@@ -352,10 +430,10 @@ function ModernProducts() {
           <Box sx={{ px: 1 }}>
             <PriceSlider
               value={priceRange}
-              onChange={(_, newValue) => setPriceRange(newValue)}
+              onChange={(_, newValue) => handlePriceChange(newValue)}
               valueLabelDisplay="auto"
-              min={0}
-              max={10000}
+              min={filterOptions.priceRange.minPrice}
+              max={filterOptions.priceRange.maxPrice}
               step={100}
               valueLabelFormat={(value) => `₹${value}`}
             />
@@ -376,7 +454,7 @@ function ModernProducts() {
         </AccordionSummary>
         <AccordionDetails>
           <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-            {colors.map((color) => (
+            {filterOptions.colors.map((color) => (
               <Chip
                 key={color}
                 label={color}
@@ -403,7 +481,7 @@ function ModernProducts() {
         </AccordionSummary>
         <AccordionDetails>
           <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-            {sizes.map((size) => (
+            {filterOptions.sizes.map((size) => (
               <Chip
                 key={size}
                 label={size}
@@ -432,7 +510,9 @@ function ModernProducts() {
         </MuiLink>
         <Typography color="text.primary">Products</Typography>
         {selectedCategory !== 'All' && (
-          <Typography color="text.primary">{selectedCategory}</Typography>
+          <Typography color="text.primary">
+            {filterOptions.categories.find(cat => cat.slug === selectedCategory)?.name || selectedCategory}
+          </Typography>
         )}
       </Breadcrumbs>
 
@@ -446,7 +526,8 @@ function ModernProducts() {
             fontSize: { xs: '1.75rem', sm: '2.125rem', md: '3rem' }
           }}
         >
-          {selectedCategory === 'All' ? 'All Products' : selectedCategory}
+          {selectedCategory === 'All' ? 'All Products' : 
+            filterOptions.categories.find(cat => cat.slug === selectedCategory)?.name || selectedCategory}
         </Typography>
         <Typography 
           variant={isSmallMobile ? "body1" : "h6"} 
@@ -481,7 +562,7 @@ function ModernProducts() {
             )}
             {selectedCategory !== 'All' && (
               <FilterChip
-                label={selectedCategory}
+                label={filterOptions.categories.find(cat => cat.slug === selectedCategory)?.name || selectedCategory}
                 onDelete={() => setSelectedCategory('All')}
               />
             )}
@@ -499,10 +580,11 @@ function ModernProducts() {
                 onDelete={() => handleSizeToggle(size)}
               />
             ))}
-            {(priceRange[0] > 0 || priceRange[1] < 10000) && (
+            {filterOptions.priceRange.minPrice !== undefined && filterOptions.priceRange.maxPrice !== undefined &&
+             (priceRange[0] > filterOptions.priceRange.minPrice || priceRange[1] < filterOptions.priceRange.maxPrice) && (
               <FilterChip
                 label={`₹${priceRange[0]} - ₹${priceRange[1]}`}
-                onDelete={() => setPriceRange([0, 10000])}
+                onDelete={() => handlePriceChange([filterOptions.priceRange.minPrice, filterOptions.priceRange.maxPrice])}
               />
             )}
           </Box>

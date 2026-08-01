@@ -36,6 +36,7 @@ import {
 import styled from 'styled-components';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
+import { getCategories } from '../services/categoriesService';
 import { logo } from '../assets';
 
 const StyledAppBar = styled(AppBar)`
@@ -171,13 +172,7 @@ const MobileSearchBarContainer = styled(motion.div)`
   }
 `;
 
-const categories = [
-  { name: 'Sarees', path: '/products?category=sarees' },
-  { name: 'Kurties', path: '/products?category=kurties' },
-  { name: 'Lehengas', path: '/products?category=lehengas' },
-  { name: 'Suits', path: '/products?category=suits' },
-  { name: 'Accessories', path: '/products?category=accessories' }
-];
+
 
 function ModernHeader() {
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -185,6 +180,7 @@ function ModernHeader() {
   const [userMenuAnchor, setUserMenuAnchor] = useState(null);
   const [scrolled, setScrolled] = useState(false);
   const [mobileSearchVisible, setMobileSearchVisible] = useState(false);
+  const [categories, setCategories] = useState([]);
   
   const { user, isAuthenticated, logout } = useAuth();
   const { itemCount } = useCart();
@@ -199,6 +195,18 @@ function ModernHeader() {
     };
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const response = await getCategories();
+        setCategories(response.categories || []);
+      } catch (error) {
+        console.error('Failed to fetch categories:', error);
+      }
+    };
+    fetchCategories();
   }, []);
 
   useEffect(() => {
@@ -258,8 +266,8 @@ function ModernHeader() {
           </ListItem>
           <Divider sx={{ my: 1, borderColor: 'rgba(255,255,255,0.2)' }} />
           {categories.map((category) => (
-            <ListItem key={category.name} button component={Link} to={category.path} onClick={() => setMobileOpen(false)}
-              sx={{ borderLeft: isActiveLink(category.path) ? '4px solid white' : 'none' }}>
+            <ListItem key={category._id} button component={Link} to={`/products?category=${category.slug}`} onClick={() => setMobileOpen(false)}
+              sx={{ borderLeft: isActiveLink(`/products?category=${category.slug}`) ? '4px solid white' : 'none' }}>
               <ListItemText primary={category.name} />
             </ListItem>
           ))}
@@ -365,12 +373,11 @@ function ModernHeader() {
               <NavLink to="/products" className={isActiveLink('/products') ? 'active' : ''}>
                 Products
               </NavLink>
-              <NavLink to="/products?category=sarees" className={isActiveLink('/products?category=sarees') ? 'active' : ''}>
-                Sarees
-              </NavLink>
-              <NavLink to="/products?category=kurties" className={isActiveLink('/products?category=kurties') ? 'active' : ''}>
-                Kurties
-              </NavLink>
+              {categories.slice(0, 2).map(category => (
+                <NavLink key={category._id} to={`/products?category=${category.slug}`} className={isActiveLink(`/products?category=${category.slug}`) ? 'active' : ''}>
+                  {category.name}
+                </NavLink>
+              ))}
               <NavLink to="/contact" className={isActiveLink('/contact') ? 'active' : ''}>
                 Contact
               </NavLink>

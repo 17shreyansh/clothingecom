@@ -4,10 +4,10 @@ import { img1, img2, img3, img4 } from '../../assets';
 import api from '../../services/api';
 
 const defaultCategories = [
-  { name: 'Sarees', image: img1, link: '/products?category=sarees', count: '120+ Styles' },
-  { name: 'Kurties', image: img2, link: '/products?category=kurties', count: '85+ Styles' },
-  { name: 'Lehengas', image: img3, link: '/products?category=lehengas', count: '65+ Styles' },
-  { name: 'Suits', image: img4, link: '/products?category=suits', count: '95+ Styles' }
+  { name: 'Sarees', image: img1, link: '/products?category=saree', count: '120+ Styles' },
+  { name: 'Kurties', image: img2, link: '/products?category=kurtie', count: '85+ Styles' },
+  { name: 'Lehengas', image: img3, link: '/products?category=lehenga', count: '65+ Styles' },
+  { name: 'Suits', image: img4, link: '/products?category=suit', count: '95+ Styles' }
 ];
 
 const CategoryShowcase = ({ data }) => {
@@ -28,7 +28,7 @@ const CategoryShowcase = ({ data }) => {
           .map(cat => ({
             name: cat.name,
             image: cat.image || defaultCategories.find(d => d.name.toLowerCase() === cat.name.toLowerCase())?.image || img1,
-            link: `/products?category=${cat.name.toLowerCase()}`,
+            link: `/products?category=${cat.slug || cat.name.toLowerCase()}`,
             count: cat.productCount ? `${cat.productCount}+ Styles` : ''
           }));
         setCategories(dynamicCategories.length > 0 ? dynamicCategories : defaultCategories);

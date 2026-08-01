@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Box,
@@ -17,6 +17,7 @@ import {
   LocationOn as LocationIcon,
 } from '@mui/icons-material';
 import styled from '@emotion/styled';
+import { getCategories } from '../../services/categoriesService';
 import logo from '../../assets/logo.png';
 
 // Styled components
@@ -164,16 +165,23 @@ const quickLinks = [
   { name: 'Size Guide', path: '/size-guide' }
 ];
 
-const categories = [
-  { name: 'Designer Sarees', path: '/products?category=sarees' },
-  { name: 'Kurtas & Kurtis', path: '/products?category=kurties' },
-  { name: 'Lehengas', path: '/products?category=lehengas' },
-  { name: 'Palazzo Sets', path: '/products?category=palazzo' },
-  { name: 'New Arrivals', path: '/products?sort=newest' },
-  { name: 'Sale Items', path: '/products?sale=true' }
-];
+
 
 function ModernFooter() {
+  const [categories, setCategories] = useState([]);
+
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const response = await getCategories();
+        setCategories(response.categories || []);
+      } catch (error) {
+        console.error('Failed to fetch categories:', error);
+      }
+    };
+    fetchCategories();
+  }, []);
+
   return (
     <FooterWrapper>
       <Container maxWidth="lg">
@@ -231,7 +239,7 @@ function ModernFooter() {
             <FooterSection>
               <h3>Shop Categories</h3>
               {categories.map((category) => (
-                <FooterLink key={category.name} to={category.path}>
+                <FooterLink key={category._id} to={`/products?category=${category.slug}`}>
                   {category.name}
                 </FooterLink>
               ))}

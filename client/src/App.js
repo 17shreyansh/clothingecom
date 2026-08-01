@@ -39,6 +39,7 @@ const AdminDiscounts = lazy(() => import('./pages/admin/Discounts'));
 const HomepageEditor = lazy(() => import('./pages/admin/HomepageEditor'));
 const EmailSettings = lazy(() => import('./pages/admin/EmailSettings'));
 const ContactManagement = lazy(() => import('./pages/admin/ContactManagement'));
+const AdminNotifications = lazy(() => import('./pages/admin/Notifications'));
 
 
 function App() {
@@ -182,6 +183,7 @@ function App() {
             <Route path="/admin/homepage" element={<AdminRoute><HomepageEditor /></AdminRoute>} />
             <Route path="/admin/email-settings" element={<AdminRoute><EmailSettings /></AdminRoute>} />
             <Route path="/admin/contacts" element={<AdminRoute><ContactManagement /></AdminRoute>} />
+            <Route path="/admin/notifications" element={<AdminRoute><AdminNotifications /></AdminRoute>} />
           </Routes>
         </Suspense>
       </div>

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FiX, FiUpload, FiTrash2, FiPlus } from 'react-icons/fi';
+import { FiX, FiUpload, FiTrash2, FiPlus, FiChevronUp, FiChevronDown } from 'react-icons/fi';
 import { useFormik } from 'formik';
 import * as Yup from 'yup';
 import { toast } from 'react-toastify';
@@ -17,6 +17,7 @@ const validationSchema = Yup.object({
 function ProductModal({ product, categories, onClose }) {
   const [loading, setLoading] = useState(false);
   const [imageFiles, setImageFiles] = useState([]);
+  const [existingImages, setExistingImages] = useState([]);
   const [variants, setVariants] = useState([{ size: 'M', color: 'Black', stock: 0 }]);
   const [activeTab, setActiveTab] = useState('basic');
   const [showValidation, setShowValidation] = useState(false);
@@ -49,6 +50,9 @@ function ProductModal({ product, categories, onClose }) {
   useEffect(() => {
     if (product?.variants) {
       setVariants(product.variants);
+    }
+    if (product?.images) {
+      setExistingImages([...product.images]);
     }
   }, [product]);
 
@@ -94,8 +98,8 @@ function ProductModal({ product, categories, onClose }) {
       });
 
       // Add existing images if editing
-      if (isEditing && product.images) {
-        formData.append('existingImages', JSON.stringify(product.images));
+      if (isEditing) {
+        formData.append('existingImages', JSON.stringify(existingImages));
       }
 
       const url = isEditing ? `/admin/products/${product._id}` : '/admin/products';
@@ -124,6 +128,19 @@ function ProductModal({ product, categories, onClose }) {
 
   const removeImage = (index) => {
     setImageFiles(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const removeExistingImage = (index) => {
+    setExistingImages(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const moveExistingImage = (fromIndex, toIndex) => {
+    setExistingImages(prev => {
+      const newImages = [...prev];
+      const [movedImage] = newImages.splice(fromIndex, 1);
+      newImages.splice(toIndex, 0, movedImage);
+      return newImages;
+    });
   };
 
   const addVariant = () => {
@@ -240,7 +257,7 @@ function ProductModal({ product, categories, onClose }) {
                           {category.name}
                         </option>
                       ))}
-                      <option value="create-new" disabled>──────────────</option>
+                      <option value="create-new" disabled>--------------</option>
                       <option value="create-new">Create New Category</option>
                     </select>
                     {formik.touched.category && formik.errors.category && (
@@ -461,13 +478,41 @@ function ProductModal({ product, categories, onClose }) {
                     </div>
                   )}
 
-                  {isEditing && product.images?.length > 0 && (
+                  {isEditing && existingImages.length > 0 && (
                     <div className="existing-images">
                       <h4>Existing Images</h4>
                       <div className="image-grid">
-                        {product.images.map((image, index) => (
+                        {existingImages.map((image, index) => (
                           <div key={index} className="image-item">
                             <img src={image.url} alt={`Product ${index + 1}`} />
+                            <div className="image-controls">
+                              <button
+                                type="button"
+                                onClick={() => moveExistingImage(index, Math.max(0, index - 1))}
+                                disabled={index === 0}
+                                className="move-btn"
+                                title="Move up"
+                              >
+                                ?
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => moveExistingImage(index, Math.min(existingImages.length - 1, index + 1))}
+                                disabled={index === existingImages.length - 1}
+                                className="move-btn"
+                                title="Move down"
+                              >
+                                ?
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => removeExistingImage(index)}
+                                className="remove-image-btn"
+                                title="Remove image"
+                              >
+                                <FiTrash2 />
+                              </button>
+                            </div>
                           </div>
                         ))}
                       </div>

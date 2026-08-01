@@ -1,16 +1,32 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { FiSearch, FiShoppingCart, FiHeart, FiUser, FiMenu, FiX } from 'react-icons/fi';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
+import { getCategories } from '../services/categoriesService';
 import './Header.css';
 
 function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [categories, setCategories] = useState([]);
   const { user, isAuthenticated, logout } = useAuth();
   const { itemCount } = useCart();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        console.log('Fetching categories...');
+        const response = await getCategories();
+        console.log('Categories response:', response);
+        setCategories(response.categories || []);
+      } catch (error) {
+        console.error('Failed to fetch categories:', error);
+      }
+    };
+    fetchCategories();
+  }, []);
 
   const handleSearch = (e) => {
     e.preventDefault();
@@ -38,8 +54,15 @@ function Header() {
           <nav className={`nav ${isMenuOpen ? 'nav-open' : ''}`}>
             <Link to="/" onClick={() => setIsMenuOpen(false)}>Home</Link>
             <Link to="/products" onClick={() => setIsMenuOpen(false)}>Products</Link>
-            <Link to="/products?category=men" onClick={() => setIsMenuOpen(false)}>Men</Link>
-            <Link to="/products?category=women" onClick={() => setIsMenuOpen(false)}>Women</Link>
+            {categories.map(category => (
+              <Link 
+                key={category._id} 
+                to={`/products?category=${category.slug}`} 
+                onClick={() => setIsMenuOpen(false)}
+              >
+                {category.name}
+              </Link>
+            ))}
             <Link to="/contact" onClick={() => setIsMenuOpen(false)}>Contact</Link>
           </nav>
 

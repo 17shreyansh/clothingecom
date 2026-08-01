@@ -1,18 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import { 
   FiTrendingUp, FiUsers, FiPackage, FiShoppingBag, 
-  FiDollarSign, FiArrowUp, FiArrowDown, FiLayout
+  FiDollarSign, FiArrowUp, FiArrowDown, FiLayout, FiBell
 } from 'react-icons/fi';
 import AdminLayout from '../../components/AdminLayout';
 import api from '../../services/api';
 import DashboardAnalytics from '../../components/charts/DashboardAnalytics';
 import AnimatedCounter from '../../components/charts/AnimatedCounter';
+import { useNotifications } from '../../context/NotificationContext';
 import './Dashboard.css';
 
 function Dashboard() {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [timeRange, setTimeRange] = useState('7d');
+  const { counts } = useNotifications();
 
   useEffect(() => {
     fetchStats();
@@ -65,6 +67,14 @@ function Dashboard() {
       trend: 'up',
       icon: FiUsers,
       color: 'warning'
+    },
+    {
+      title: 'Notifications',
+      value: counts?.total || 0,
+      change: counts?.total > 0 ? 'New' : 'None',
+      trend: counts?.total > 0 ? 'up' : 'down',
+      icon: FiBell,
+      color: counts?.total > 0 ? 'error' : 'success'
     }
   ];
 
@@ -113,8 +123,14 @@ function Dashboard() {
                   <stat.icon />
                 </div>
                 <div className={`stat-change ${stat.trend}`}>
-                  {stat.trend === 'up' ? <FiArrowUp /> : <FiArrowDown />}
-                  {stat.change}
+                  {stat.title === 'Notifications' ? (
+                    stat.change
+                  ) : (
+                    <>
+                      {stat.trend === 'up' ? <FiArrowUp /> : <FiArrowDown />}
+                      {stat.change}
+                    </>
+                  )}
                 </div>
               </div>
               <div className="stat-content">

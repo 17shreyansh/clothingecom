@@ -2,6 +2,7 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { CircularProgress } from '@mui/material';
 import styled from 'styled-components';
+import logo from '../../assets/logo.png';
 
 const LoaderContainer = styled(motion.div)`
   position: fixed;
@@ -47,7 +48,7 @@ const UniversalLoader = ({ message = "Loading Bhuvi Creations..." }) => {
         animate={{ scale: 1, opacity: 1 }}
         transition={{ delay: 0.2, duration: 0.5 }}
       >
-        <img src="/src/assets/logo.png" alt="Bhuvi Creations" />
+        <img src={logo} alt="Bhuvi Creations" />
       </LogoContainer>
 
       <motion.div
