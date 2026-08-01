@@ -12,10 +12,9 @@ const clearData = async () => {
     const orderResult = await Order.deleteMany({});
     console.log(`✅ Deleted ${orderResult.deletedCount} orders.`);
 
-    // Remove all users except admin
-    // If you want to keep ONLY a specific admin email, change this to: { email: { $ne: 'admin@bhuvicreations.com' } }
-    const userResult = await User.deleteMany({ role: { $ne: 'admin' } });
-    console.log(`✅ Deleted ${userResult.deletedCount} users (kept admin).`);
+    // Remove all users
+    const userResult = await User.deleteMany({});
+    console.log(`✅ Deleted ${userResult.deletedCount} users.`);
 
   } catch (error) {
     console.error('❌ Error:', error.message);
