@@ -11,7 +11,13 @@ const {
   getOrderById,
   updateOrderStatus,
   getAllUsers,
+  createUser,
+  getUserById,
+  updateUser,
   updateUserRole,
+  banUser,
+  unbanUser,
+  resetUserPassword,
   deleteUser,
   getAllCategories,
   createCategory,
@@ -52,11 +58,20 @@ router.patch('/orders/:id/status', updateOrderStatus);
 
 // Users
 router.route('/users')
-  .get(getAllUsers);
+  .get(getAllUsers)
+  .post(createUser);
 
 router.route('/users/:id')
-  .patch(updateUserRole)
+  .get(getUserById)
+  .patch(updateUser)
   .delete(deleteUser);
+
+router.patch('/users/:id/ban', banUser);
+router.patch('/users/:id/unban', unbanUser);
+router.patch('/users/:id/reset-password', resetUserPassword);
+
+// Legacy route for backward compatibility
+router.patch('/users/:id/role', updateUserRole);
 
 // Categories
 router.route('/categories')

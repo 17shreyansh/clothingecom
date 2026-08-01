@@ -6,27 +6,49 @@ const User = require('../models/User');
 // @access  Public
 exports.getProducts = async (req, res) => {
   try {
-    const {
-      category,
-      subcategory,
-      minPrice,
-      maxPrice,
-      size,
-      color,
-      brand,
-      sort,
-      page = 1,
-      limit = 12,
-      featured,
-      newArrival
-    } = req.query;
+    const { search, category, categories, brands, sizes, colors, minPrice, maxPrice, sort = 'newest', page = 1, limit = 12 } = req.query;
 
-    // Build query
     let query = { isActive: true };
 
-    // Category filter
-    if (category) query.category = category;
-    if (subcategory) query.subcategory = subcategory;
+    // Search filter
+    if (search?.trim()) {
+      query.$or = [
+        { name: { $regex: search.trim(), $options: 'i' } },
+        { description: { $regex: search.trim(), $options: 'i' } },
+        { brand: { $regex: search.trim(), $options: 'i' } }
+      ];
+    }
+
+    // Category filter (support both single category and categories array)
+    const categoryFilter = category || categories;
+    if (categoryFilter) {
+      const Category = require('../models/Category');
+      const categoryNames = categoryFilter.split(',').filter(Boolean);
+      const categoryDocs = await Category.find({ 
+        $or: [
+          { name: { $in: categoryNames } },
+          { slug: { $in: categoryNames } }
+        ]
+      });
+      if (categoryDocs.length) {
+        query.category = { $in: categoryDocs.map(c => c._id) };
+      }
+    }
+
+    // Brand filter
+    if (brands) {
+      query.brand = { $in: brands.split(',').filter(Boolean) };
+    }
+
+    // Size filter
+    if (sizes) {
+      query['variants.size'] = { $in: sizes.split(',').filter(Boolean) };
+    }
+
+    // Color filter
+    if (colors) {
+      query['variants.color'] = { $in: colors.split(',').filter(Boolean) };
+    }
 
     // Price filter
     if (minPrice || maxPrice) {
@@ -35,83 +57,41 @@ exports.getProducts = async (req, res) => {
       if (maxPrice) query.price.$lte = Number(maxPrice);
     }
 
-
-
-    // Brand filter
-    if (brand) {
-      const brandArray = brand.split(',');
-      query.brand = { $in: brandArray.map(b => new RegExp(b, 'i')) };
-    }
-
-    // Size filter
-    if (size) {
-      const sizeArray = size.split(',');
-      query['variants.size'] = { $in: sizeArray };
-    }
-
-    // Color filter
-    if (color) {
-      const colorArray = color.split(',');
-      query['variants.color'] = { $in: colorArray.map(c => new RegExp(c, 'i')) };
-    }
-
-    // Featured/New arrival filters
-    if (featured === 'true') query.isFeatured = true;
-    if (newArrival === 'true') query.isNewArrival = true;
-
-    // Sort options
-    let sortOption = { createdAt: -1 }; // Default: newest first
-    
+    // Sort
+    let sortOption = { createdAt: -1 };
     switch (sort) {
-      case 'price-low':
-        sortOption = { price: 1 };
-        break;
-      case 'price-high':
-        sortOption = { price: -1 };
-        break;
-      case 'rating':
-        sortOption = { averageRating: -1 };
-        break;
-      case 'popular':
-        sortOption = { soldCount: -1 };
-        break;
-      case 'name':
-        sortOption = { name: 1 };
-        break;
+      case 'price-low': sortOption = { price: 1 }; break;
+      case 'price-high': sortOption = { price: -1 }; break;
+      case 'rating': sortOption = { averageRating: -1 }; break;
+      case 'popular': sortOption = { soldCount: -1 }; break;
+      case 'name': sortOption = { name: 1 }; break;
+      default: sortOption = { createdAt: -1 };
     }
 
     // Pagination
-    const pageNum = parseInt(page);
-    const limitNum = parseInt(limit);
+    const pageNum = Math.max(1, parseInt(page) || 1);
+    const limitNum = Math.min(50, Math.max(1, parseInt(limit) || 12));
     const skip = (pageNum - 1) * limitNum;
 
     // Execute query
-    const products = await Product.find(query)
-      .populate('category', 'name slug')
-      .populate('subcategory', 'name slug')
-      .sort(sortOption)
-      .skip(skip)
-      .limit(limitNum)
-      .select('-reviews');
+    const [products, total] = await Promise.all([
+      Product.find(query)
+        .populate('category', 'name slug')
+        .sort(sortOption)
+        .skip(skip)
+        .limit(limitNum)
+        .select('-reviews')
+        .lean(),
+      Product.countDocuments(query)
+    ]);
 
-    // Get total count for pagination
-    const total = await Product.countDocuments(query);
-
-    // Add to wishlist status if user is logged in
-    if (req.user) {
-      const user = await User.findById(req.user.id).select('wishlist');
-      products.forEach(product => {
-        product._doc.isInWishlist = user.wishlist.includes(product._id);
-      });
-    }
-
-    res.status(200).json({
+    res.json({
       success: true,
-      count: products.length,
-      total,
-      totalPages: Math.ceil(total / limitNum),
+      products: products || [],
+      total: total || 0,
+      totalPages: Math.ceil((total || 0) / limitNum),
       currentPage: pageNum,
-      products
+      hasMore: (pageNum * limitNum) < (total || 0)
     });
   } catch (error) {
     console.error('Get products error:', error);
@@ -432,60 +412,30 @@ exports.getFilterOptions = async (req, res) => {
     const Category = require('../models/Category');
     
     // Get categories with product count
-    const categories = await Category.aggregate([
-      {
-        $lookup: {
-          from: 'products',
-          localField: '_id',
-          foreignField: 'category',
-          as: 'products'
-        }
-      },
-      {
-        $addFields: {
-          productCount: {
-            $size: {
-              $filter: {
-                input: '$products',
-                cond: { $eq: ['$$this.isActive', true] }
-              }
-            }
-          }
-        }
-      },
-      {
-        $project: {
-          name: 1,
-          slug: 1,
-          productCount: 1
-        }
-      },
-      { $sort: { name: 1 } }
-    ]);
+    const categories = await Category.find({ isActive: true })
+      .select('name slug')
+      .sort({ name: 1 });
     
     // Get unique brands
-    const brands = await Product.distinct('brand', { isActive: true, brand: { $ne: null, $ne: '' } });
+    const brands = await Product.distinct('brand', { 
+      isActive: true, 
+      brand: { $exists: true, $ne: null, $ne: '' } 
+    });
     
     // Get unique sizes from variants
-    const sizeAggregation = await Product.aggregate([
-      { $match: { isActive: true } },
-      { $unwind: '$variants' },
-      { $group: { _id: '$variants.size' } },
-      { $sort: { _id: 1 } }
-    ]);
-    const sizes = sizeAggregation.map(item => item._id);
+    const sizes = await Product.distinct('variants.size', { 
+      isActive: true,
+      'variants.size': { $exists: true, $ne: null, $ne: '' }
+    });
     
     // Get unique colors from variants
-    const colorAggregation = await Product.aggregate([
-      { $match: { isActive: true } },
-      { $unwind: '$variants' },
-      { $group: { _id: '$variants.color' } },
-      { $sort: { _id: 1 } }
-    ]);
-    const colors = colorAggregation.map(item => item._id);
+    const colors = await Product.distinct('variants.color', { 
+      isActive: true,
+      'variants.color': { $exists: true, $ne: null, $ne: '' }
+    });
     
     // Get price range
-    const priceRange = await Product.aggregate([
+    const priceStats = await Product.aggregate([
       { $match: { isActive: true } },
       { $group: {
         _id: null,
@@ -498,10 +448,10 @@ exports.getFilterOptions = async (req, res) => {
       success: true,
       filters: {
         categories,
-        brands: brands.filter(brand => brand).sort(),
-        sizes,
-        colors,
-        priceRange: priceRange[0] || { minPrice: 0, maxPrice: 10000 }
+        brands: brands.filter(Boolean).sort(),
+        sizes: sizes.filter(Boolean).sort(),
+        colors: colors.filter(Boolean).sort(),
+        priceRange: priceStats[0] || { minPrice: 0, maxPrice: 10000 }
       }
     });
   } catch (error) {

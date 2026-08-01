@@ -40,6 +40,13 @@ exports.protect = async (req, res, next) => {
         });
       }
 
+      if (user.isBanned) {
+        return res.status(403).json({
+          success: false,
+          message: `Account has been banned. Reason: ${user.banReason || 'No reason provided'}. Please contact support.`
+        });
+      }
+
       req.user = user;
       next();
     } catch (error) {
@@ -60,6 +67,12 @@ exports.protect = async (req, res, next) => {
 // Admin only access
 exports.admin = exports.adminOnly = (req, res, next) => {
   if (req.user && req.user.role === 'admin') {
+    if (req.user.isBanned) {
+      return res.status(403).json({
+        success: false,
+        message: 'Admin account has been banned. Please contact system administrator.'
+      });
+    }
     next();
   } else {
     return res.status(403).json({
