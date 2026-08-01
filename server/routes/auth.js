@@ -56,4 +56,5 @@ router.put('/profile', protect, updateProfile);
 router.put('/change-password', protect, changePasswordValidation, changePassword);
 router.post('/reset-password', resetPassword);
 
+
 module.exports = router;

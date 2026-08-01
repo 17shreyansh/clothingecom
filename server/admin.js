@@ -9,7 +9,7 @@ const createAdmin = async () => {
 
     const adminData = {
       name: 'Admin',
-      email: 'admin@clothing.com',
+      email: 'admin@bhuvicreations.com',
       password: 'admin@123',
       role: 'admin',
       isActive: true
@@ -23,12 +23,12 @@ const createAdmin = async () => {
     }
 
     const admin = await User.create(adminData);
-    
+
     console.log('✅ Admin created successfully!');
     console.log('📧 Email:', adminData.email);
     console.log('🔑 Password:', adminData.password);
     console.log('👤 Role:', admin.role);
-    
+
   } catch (error) {
     console.error('❌ Error:', error.message);
   } finally {

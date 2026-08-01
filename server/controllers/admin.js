@@ -510,7 +510,7 @@ exports.getAllUsers = async (req, res) => {
 // @access  Private/Admin
 exports.updateUser = async (req, res) => {
   try {
-    const { name, email, phone, role, isActive, emailVerified } = req.body;
+    const { name, email, phone, isActive, emailVerified } = req.body;
     
     const user = await User.findById(req.params.id).select('-password');
     if (!user) {
@@ -543,7 +543,7 @@ exports.updateUser = async (req, res) => {
     if (name) user.name = name;
     if (email) user.email = email;
     if (phone !== undefined) user.phone = phone;
-    if (role) user.role = role;
+
     if (typeof isActive !== 'undefined') user.isActive = isActive;
     if (typeof emailVerified !== 'undefined') user.emailVerified = emailVerified;
 
@@ -571,7 +571,7 @@ exports.updateUserRole = exports.updateUser;
 // @access  Private/Admin
 exports.createUser = async (req, res) => {
   try {
-    const { name, email, phone, password, role = 'user', isActive = true, emailVerified = false } = req.body;
+    const { name, email, phone, password, isActive = true, emailVerified = false } = req.body;
 
     // Check if user already exists
     const existingUser = await User.findOne({ email });
@@ -588,7 +588,7 @@ exports.createUser = async (req, res) => {
       email,
       phone,
       password,
-      role,
+      role: 'user',
       isActive,
       emailVerified
     });
