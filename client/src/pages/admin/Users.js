@@ -74,17 +74,7 @@ function Users() {
     }
   };
 
-  const handleUpdateRole = async (userId, newRole) => {
-    try {
-      const response = await api.patch(`/admin/users/${userId}`, { role: newRole });
-      if (response.data.success) {
-        toast.success('User role updated successfully');
-        fetchUsers();
-      }
-    } catch (error) {
-      toast.error('Failed to update user role');
-    }
-  };
+
 
   const handleToggleStatus = async (userId, currentStatus) => {
     try {
@@ -303,14 +293,7 @@ function Users() {
                   <span className="email-cell">{user.email}</span>
                   
                   <div className="role-cell">
-                    <select
-                      value={user.role}
-                      onChange={(e) => handleUpdateRole(user._id, e.target.value)}
-                      className="role-select"
-                    >
-                      <option value="user">User</option>
-                      <option value="admin">Admin</option>
-                    </select>
+                    <span className={`badge ${user.role}`}>{user.role}</span>
                   </div>
                   
                   <div className="status-badges">
@@ -612,13 +595,7 @@ function CreateUserForm({ onSubmit, onCancel }) {
         />
       </div>
       
-      <div className="form-group">
-        <label>Role</label>
-        <select name="role" value={formData.role} onChange={handleChange}>
-          <option value="user">User</option>
-          <option value="admin">Admin</option>
-        </select>
-      </div>
+
       
       <div className="form-group checkbox-group">
         <label>
@@ -714,13 +691,7 @@ function EditUserForm({ user, onSubmit, onCancel }) {
         />
       </div>
       
-      <div className="form-group">
-        <label>Role</label>
-        <select name="role" value={formData.role} onChange={handleChange}>
-          <option value="user">User</option>
-          <option value="admin">Admin</option>
-        </select>
-      </div>
+
       
       <div className="form-group checkbox-group">
         <label>
