@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FiSearch, FiEdit3, FiTrash2, FiMoreVertical, FiUser, FiMail, FiCalendar, FiPlus, FiShield, FiShieldOff, FiKey, FiEye, FiUserX, FiUserCheck } from 'react-icons/fi';
+import { FiSearch, FiEdit3, FiTrash2, FiMoreVertical, FiUser, FiMail, FiCalendar, FiPlus, FiShield, FiShieldOff, FiKey, FiEye, FiEyeOff, FiRefreshCw, FiUserX, FiUserCheck } from 'react-icons/fi';
 import AdminLayout from '../../components/AdminLayout';
 import api from '../../services/api';
 import { toast } from 'react-toastify';
@@ -898,6 +898,58 @@ function BanUserForm({ user, onSubmit, onCancel }) {
 function PasswordResetForm({ user, onSubmit, onCancel }) {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [passwordStrength, setPasswordStrength] = useState({ score: 0, label: '', color: '' });
+
+  const calculateStrength = (pass) => {
+    let score = 0;
+    if (pass.length > 5) score += 1;
+    if (pass.length > 8) score += 1;
+    if (/[A-Z]/.test(pass)) score += 1;
+    if (/[0-9]/.test(pass)) score += 1;
+    if (/[^A-Za-z0-9]/.test(pass)) score += 1;
+
+    let label = '';
+    let color = '';
+    if (pass.length === 0) {
+      label = '';
+      color = 'var(--border-light)';
+    } else if (score <= 2) {
+      label = 'Weak';
+      color = '#ef4444';
+    } else if (score <= 3) {
+      label = 'Fair';
+      color = '#f59e0b';
+    } else if (score <= 4) {
+      label = 'Good';
+      color = '#3b82f6';
+    } else {
+      label = 'Strong';
+      color = '#10b981';
+    }
+    setPasswordStrength({ score, label, color });
+  };
+
+  const handlePasswordChange = (e) => {
+    const pass = e.target.value;
+    setNewPassword(pass);
+    calculateStrength(pass);
+  };
+
+  const generatePassword = () => {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*';
+    let pass = '';
+    for (let i = 0; i < 12; i++) {
+      pass += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    // Ensure at least one uppercase, one number, and one special character for better strength
+    pass += 'A1!'; 
+    
+    setNewPassword(pass);
+    setConfirmPassword(pass);
+    calculateStrength(pass);
+    setShowPassword(true);
+  };
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -921,25 +973,61 @@ function PasswordResetForm({ user, onSubmit, onCancel }) {
       </div>
       
       <div className="form-group">
-        <label>New Password *</label>
-        <input
-          type="password"
-          value={newPassword}
-          onChange={(e) => setNewPassword(e.target.value)}
-          required
-          minLength={6}
-        />
+        <div className="password-header">
+          <label>New Password *</label>
+          <button type="button" onClick={generatePassword} className="generate-btn">
+            <FiRefreshCw /> Generate
+          </button>
+        </div>
+        <div className="password-input-wrapper">
+          <input
+            type={showPassword ? "text" : "password"}
+            value={newPassword}
+            onChange={handlePasswordChange}
+            required
+            minLength={6}
+            placeholder="Enter new password"
+          />
+          <button 
+            type="button" 
+            className="toggle-password"
+            onClick={() => setShowPassword(!showPassword)}
+            tabIndex="-1"
+          >
+            {showPassword ? <FiEyeOff /> : <FiEye />}
+          </button>
+        </div>
+        {newPassword && (
+          <div className="password-strength">
+            <div className="strength-bars">
+              {[1, 2, 3, 4, 5].map((level) => (
+                <div 
+                  key={level} 
+                  className={`strength-bar ${passwordStrength.score >= level ? 'active' : ''}`}
+                  style={{ backgroundColor: passwordStrength.score >= level ? passwordStrength.color : 'var(--border-light)' }}
+                ></div>
+              ))}
+            </div>
+            <span style={{ color: passwordStrength.color }}>{passwordStrength.label}</span>
+          </div>
+        )}
       </div>
       
       <div className="form-group">
         <label>Confirm Password *</label>
-        <input
-          type="password"
-          value={confirmPassword}
-          onChange={(e) => setConfirmPassword(e.target.value)}
-          required
-          minLength={6}
-        />
+        <div className="password-input-wrapper">
+          <input
+            type={showPassword ? "text" : "password"}
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+            required
+            minLength={6}
+            placeholder="Confirm new password"
+          />
+        </div>
+        {confirmPassword && newPassword !== confirmPassword && (
+          <span className="error-text">Passwords do not match</span>
+        )}
       </div>
       
       <div className="form-actions">
